@@ -1,7 +1,7 @@
 # High Noon — Western multiplayer shooter proposal
 
 Date: 2026-10-30
-Status: High Noon working title approved by Des; first milestone ready for review.
+Status: Des requested implementation of the first Western game on 2026-10-30; milestone 2 implemented for review and Studio validation.
 
 ## Direction
 
@@ -20,9 +20,9 @@ Acceptance checks: repository URL and project title agree; project JSON parses a
 
 This milestone changes project identity and documentation only. Gameplay analytics begin with milestone 2, when a match loop exists to measure.
 
-## Milestone 2: first playable shootout — requires milestone 1 review
+## Milestone 2: first playable shootout
 
-Proposed scope: one small greybox frontier street, two-player free-for-all, one revolver, respawn, a visible score and a clear match result. Confirm this scope with Des before implementation. Retain first-person controls initially to reuse the FPS framework; third-person aiming is a separate product choice.
+Proposed scope: one small greybox frontier street, two-player free-for-all, one revolver, respawn, a visible score and a clear match result. Des requested building this Western foundation on 2026-10-30. Retain first-person controls initially; third-person aiming is a separate product choice.
 
 1. Recover or replace required Studio dependencies and verify the inherited baseline.
 2. Audit server validation for firing, damage and respawns before adapting the weapon.
@@ -38,4 +38,12 @@ Do not expand into horses, open-world missions, progression or purchases during 
 - `src/replicatedfirst/BeginningSequence/init.client.lua` waits for `LoadingGUI`, `Intro` and `Workspace.Map`; the repository does not include the corresponding full scene and interface.
 - `src/server/FrameworkScript.server.lua` expects `ServerStorage.Stored.MapIDs` and includes teleports to configured places. New Roblox places and ownership must be established before testing travel.
 - Asset folders under `src/shared/Assets` include metadata; this is not proof that all required models, animations and interfaces are supplied.
-- The existing source has not yet been built or playtested for this fork. Do not describe the Western game as playable.
+- The inherited source was built and playtested; it fails on missing UI/save modules and outdated avatar constraints. The default Western runtime replaces those entry points; the full upstream mapping remains in evostrike.project.json.
+
+## Implemented scope
+
+Default project mapping runs a self-contained Western prototype. Original Evostrike files remain preserved; walking/jump tuning and the damage/falloff approach are reused. This does not claim the full Source movement controller is ported. The original weapon remotes accepted client hit information, so new damage uses server raycasts with state, ammo, range, rate, origin and request ID validation.
+
+Players wait for at least two gunslingers, prepare fresh characters, play a three-minute or ten-elimination round, see a result and restart after ten seconds. Preparation has a timeout and retries from waiting. Leaving below two players ends the match. Equal positive scores produce a draw; all-zero scores produce no winner. Respawns take three seconds with two seconds of protection, lost on firing. Revolvers have unlimited reserve ammunition to keep this first playtest focused on combat.
+
+Live analytics events: WesternMatchJoined, WesternMatchCompleted, WesternSecondMatchJoined. Studio logs the same event names without sending live analytics. These measure session retention into a second round, not confirmed player attention. No persistence or purchases are added.
