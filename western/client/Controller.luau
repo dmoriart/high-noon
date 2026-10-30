@@ -14,9 +14,15 @@ function Controller.start()
     local remote = shared:WaitForChild("Combat") :: RemoteEvent
     local sequence = 0
     local lastShot = -math.huge
+    local compact = false
     local gui = Instance.new("ScreenGui")
     gui.Name, gui.ResetOnSpawn, gui.IgnoreGuiInset = "HighNoonHUD", false, false
     gui.Parent = player:WaitForChild("PlayerGui")
+    local aim = Instance.new("ScreenGui")
+    aim.Name, aim.ResetOnSpawn = "HighNoonAim", false
+    aim.ScreenInsets = Enum.ScreenInsets.None
+    aim.DisplayOrder = gui.DisplayOrder + 1
+    aim.Parent = player.PlayerGui
     local hooks = Instance.new("BindableEvent")
     hooks.Name, hooks.Parent = "WeaponPresentation", gui
 
@@ -33,9 +39,10 @@ function Controller.start()
         corner.CornerRadius, corner.Parent = UDim.new(0, 4), object
         return object
     end
-    label("Title", UDim2.new(0.32, 0, 0, 36), UDim2.fromScale(0.34, 0), Config.Title)
+    local title = label("Title", UDim2.new(0.32, 0, 0, 36), UDim2.fromScale(0.34, 0), Config.Title)
     local status = label("Match", UDim2.new(0.8, 0, 0, 46), UDim2.new(0.1, 0, 0, 40), "Waiting for a second gunslinger")
     local crosshair = label("Crosshair", UDim2.fromOffset(24, 24), UDim2.new(0.5, -12, 0.5, -12), "+")
+    crosshair.Parent = aim
     crosshair.BackgroundTransparency = 1
     local ammo = label("Ammo", UDim2.new(0.48, 0, 0, 44), UDim2.new(0.5, 0, 1, -52), "REVOLVER  6 / 6")
     local health = label("Health", UDim2.new(0.46, 0, 0, 44), UDim2.new(0.02, 0, 1, -52), "HEALTH  100")
@@ -43,7 +50,7 @@ function Controller.start()
     toast.Visible = false
     local board = label("Scores", UDim2.new(0.3, 0, 0, 180), UDim2.new(0.69, 0, 0, 96), "")
     board.TextSize, board.TextYAlignment = 15, Enum.TextYAlignment.Top
-    label("Controls", UDim2.new(0.65, 0, 0, 38), UDim2.new(0.02, 0, 1, -94), "Click / tap weapon: fire • R / X: reload • WASD / stick: move")
+    local controls = label("Controls", UDim2.new(0.65, 0, 0, 38), UDim2.new(0.02, 0, 1, -94), "Click / tap weapon: fire • R / X: reload • WASD / stick: move")
     local toastId = 0
     local function message(text: string)
         toastId += 1
@@ -85,7 +92,22 @@ function Controller.start()
             table.insert(lines, string.sub(list[i].DisplayName, 1, 18) .. "   " .. value(list[i]))
         end
         board.Text = table.concat(lines, "\n")
+        title.Text = if compact then Config.Title .. " • " .. value(player) else Config.Title
     end
+    local function updateLayout()
+        compact = gui.AbsoluteSize.Y < 450 or gui.AbsoluteSize.X < 600
+        board.Visible, controls.Visible = not compact, not compact
+        health.Position = if compact then UDim2.new(0.02, 0, 0, 90) else UDim2.new(0.02, 0, 1, -52)
+        ammo.Position = if compact then UDim2.new(0.5, 0, 0, 90) else UDim2.new(0.5, 0, 1, -52)
+        health.Size = UDim2.new(0.46, 0, 0, if compact then 28 else 44)
+        ammo.Size = UDim2.new(0.48, 0, 0, if compact then 28 else 44)
+        health.TextSize, ammo.TextSize = if compact then 14 else 18, if compact then 14 else 18
+        title.Size = UDim2.new(if compact then 0.5 else 0.32, 0, 0, 36)
+        title.Position = UDim2.fromScale(if compact then 0.25 else 0.34, 0)
+        updateScores()
+    end
+    gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateLayout)
+    updateLayout()
     local scoreConnections: {[Player]: RBXScriptConnection} = {}
     local function watchScore(p: Player)
         task.spawn(function()
@@ -161,6 +183,7 @@ function Controller.start()
         RunService:UnbindFromRenderStep("HighNoonViewmodel")
         ContextActionService:UnbindAction("HighNoonReload")
         viewmodel:Destroy()
+        aim:Destroy()
         if healthConnection then healthConnection:Disconnect() end
         for _, connection in scoreConnections do connection:Disconnect() end
     end)
@@ -199,6 +222,9 @@ function Controller.start()
             hooks:Fire("Fire", a)
         elseif action == "Reload" then
             hooks:Fire("Reload", player)
+        elseif action == "ReloadCancelled" then
+            hooks:Fire("ReloadCancelled", player)
+            message("Reload interrupted")
         elseif action == "Fired" then
             lastShot = os.clock()
             local camera = workspace.CurrentCamera

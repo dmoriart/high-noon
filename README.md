@@ -8,6 +8,8 @@ The prototype is a frontier street shootout with one revolver, respawns, a score
 
 - Two or more players start a free-for-all shootout: first to 10 eliminations, or highest score after three minutes.
 - Six-shot revolver, server-checked shots and damage, headshots, distance falloff and timed reloads with an unlimited reserve for this prototype.
+- Unequipping interrupts a reload; cancelled timers cannot complete a newer reload.
+- A viewport-aligned crosshair and compact HUD on short/narrow screens keep the aim accurate and touch-control areas clear.
 - Respawns, short spawn protection (lost on firing), live scores, match results and automatic next rounds.
 - Grey frontier buildings and cover tagged `NeedsArt`, ready for Josh's art pass.
 - First-person HUD and a grey camera revolver; firing and reload animation hooks are available for art integration.

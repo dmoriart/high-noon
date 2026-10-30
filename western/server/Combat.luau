@@ -5,7 +5,7 @@ local Config = require(ReplicatedStorage.HighNoon.Config)
 local Ballistics = require(ReplicatedStorage.HighNoon.Ballistics)
 local Combat = {}
 
-type State = {character: Model, ammo: number, reloadUntil: number, lastShot: number, lastRequest: number, lastId: number}
+type State = {character: Model, ammo: number, reloadUntil: number, lastShot: number, lastRequest: number, lastId: number, reloadId: number, reloadConnection: RBXScriptConnection?}
 local states: {[Player]: State} = {}
 local remote: RemoteEvent
 local onKill: (Player, Player) -> ()
@@ -16,8 +16,17 @@ local function publish(player: Player, state: State)
     player:SetAttribute("Reloading", state.reloadUntil > 0)
 end
 
+local function clearReload(state: State)
+    state.reloadUntil, state.reloadId = 0, 0
+    if state.reloadConnection then
+        state.reloadConnection:Disconnect()
+        state.reloadConnection = nil
+    end
+end
+
 function Combat.reset(player: Player, character: Model)
-    states[player] = {character = character, ammo = Config.Magazine, reloadUntil = 0, lastShot = -math.huge, lastRequest = -math.huge, lastId = 0}
+    if states[player] then clearReload(states[player]) end
+    states[player] = {character = character, ammo = Config.Magazine, reloadUntil = 0, lastShot = -math.huge, lastRequest = -math.huge, lastId = 0, reloadId = 0, reloadConnection = nil}
     publish(player, states[player])
 end
 
@@ -25,13 +34,14 @@ function Combat.setActive(value: boolean)
     active = value
     if not value then
         for player, state in states do
-            state.reloadUntil = 0
+            clearReload(state)
             publish(player, state)
         end
     end
 end
 
 function Combat.remove(player: Player)
+    if states[player] then clearReload(states[player]) end
     states[player] = nil
 end
 
@@ -55,12 +65,18 @@ function Combat.request(player: Player, action: any, requestId: any, origin: any
     if state.reloadUntil > 0 then return "reloading" end
     if action == "Reload" then
         if state.ammo >= Config.Magazine then return "full" end
-        state.reloadUntil = now + Config.ReloadSeconds
+        state.reloadUntil, state.reloadId = now + Config.ReloadSeconds, requestId
+        state.reloadConnection = tool.Unequipped:Connect(function()
+            if states[player] ~= state or state.reloadId ~= requestId then return end
+            clearReload(state)
+            publish(player, state)
+            remote:FireClient(player, "ReloadCancelled")
+        end)
         publish(player, state)
         remote:FireClient(player, "Reload")
         task.delay(Config.ReloadSeconds, function()
-            if states[player] ~= state or state.reloadUntil == 0 then return end
-            state.reloadUntil = 0
+            if states[player] ~= state or state.reloadId ~= requestId then return end
+            clearReload(state)
             if not active or player.Character ~= character or humanoid.Health <= 0 or tool.Parent ~= character then
                 publish(player, state)
                 return

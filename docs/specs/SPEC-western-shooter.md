@@ -47,3 +47,13 @@ Default project mapping runs a self-contained Western prototype. Original Evostr
 Players wait for at least two gunslingers, prepare fresh characters, play a three-minute or ten-elimination round, see a result and restart after ten seconds. Preparation has a timeout and retries from waiting. Leaving below two players ends the match. Equal positive scores produce a draw; all-zero scores produce no winner. Respawns take three seconds with two seconds of protection, lost on firing. Revolvers have unlimited reserve ammunition to keep this first playtest focused on combat.
 
 Live analytics events: WesternMatchJoined, WesternMatchCompleted, WesternSecondMatchJoined. Studio logs the same event names without sending live analytics. These measure session retention into a second round, not confirmed player attention. No persistence or purchases are added.
+
+## Shootout reliability pass — 2026-10-30
+
+Des requested testing and improvements. Keep this pass within the existing shootout: align the crosshair with the camera ray and cancel a reload immediately when the weapon is unequipped. No new art or gameplay mode is required.
+
+We believe first-time players will trust aiming and reload feedback because the marker matches the shot and interrupted reloads require a fresh reload. We'll know if all aim-alignment and reload-interruption regression checks pass, alongside the existing two-player combat and lifecycle suites. Player replay retention remains the product metric already instrumented above; these are correctness fixes rather than a new funnel.
+
+Checks before implementation: reproduce the crosshair/camera-center offset in Studio; reproduce ammo refilling after unequipping and re-equipping during a reload. After implementation: crosshair center matches the camera viewport center, including after resizing; unequip cancels the reload immediately; its delayed callback cannot refill a later reload; a fresh reload still completes; existing combat and match lifecycle tests pass. Preserve all art and original source.
+
+Phone simulation also exposed the desktop HUD overlapping touch-control areas. This pass adds a compact layout on short or narrow viewports: health/ammo move below the match header, own score stays in the title, and the large scoreboard/control legend are hidden. Check both layout modes and score updates after resizing.

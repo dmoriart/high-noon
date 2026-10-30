@@ -26,3 +26,13 @@ This is a greybox prototype for Des and Josh to review. Mobile/gamepad controls,
 Studio also logged localhost connection failures from the MCP plugin and an avatar asset-type warning for asset 203785492. They did not prevent the tests above; no new asset IDs were introduced by this prototype. Initial test harness failures (module cache isolation, health regeneration, deferred death events and client startup timing) were corrected before the passing runs.
 
 The original Evostrike mapping still fails at runtime without its missing Studio dependencies; a successful upstream Rojo build is not a successful upstream playtest. The default Western runtime avoids those dependencies. No public release or cloud publish was performed.
+
+## Reliability pass — 2026-10-30
+
+Reproduced the crosshair/camera offset at a 58-pixel top-bar inset (29-pixel aim error), then verified zero-pixel error with the new aim layer at desktop viewport sizes 856×617 and 1140×617 and in the iPhone 14 landscape simulator at 749×388. Phone screenshots exposed the desktop HUD crowding the touch controls, prompting the compact layout.
+
+Reproduced a partially empty cylinder refilling after an unequip/re-equip during a reload. The expanded two-player combat suite then returned `PASS 25 combat checks`, including immediate cancellation, keeping ammo unchanged, rejecting an old completion callback during a new reload and successfully completing a fresh reload. All prior combat assertions were retained.
+
+The compact layout was checked visually in phone landscape: the large desktop panels disappear, health and ammo move above the touch controls, and a server score change is reflected in the title. Switching back to desktop restored the scoreboard, control legend and bottom vitals; aim remained at zero-pixel error. This is simulator layout coverage, not a complete physical-phone input test.
+
+The additional match-lifecycle rerun could not be completed in this session. Studio first rejected a launch because a previous test was still in progress, then later launched sessions without the required clients/readiness. An attempted stronger controller-input harness also timed out and was not counted as a pass; its unverified changes were discarded. The existing nine-check lifecycle test is preserved, with its earlier passing run recorded above, but has not passed again after this reliability change. No result from the launcher was treated as game success.

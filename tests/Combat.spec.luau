@@ -68,9 +68,19 @@ return function()
     check(request("Fire") == "fired" and vh.Health >= before, "spawn shield blocks damage")
     shield:Destroy()
     task.wait(Config.FireInterval)
+    local interruptedAmmo = attacker:GetAttribute("Ammo")
+    check(request("Reload") == "reload started", "interruptible reload begins")
     tool.Parent = attacker.Backpack
+    task.wait(0.1)
+    check(not attacker:GetAttribute("Reloading") and attacker:GetAttribute("Ammo") == interruptedAmmo, "unequip immediately cancels reload")
     check(request("Fire") == "not equipped or alive", "unequipped weapon rejected")
+    task.wait(0.5)
     ah:EquipTool(tool)
+    check(request("Reload") == "reload started", "fresh reload after re-equip begins")
+    task.wait(Config.ReloadSeconds - 0.4)
+    check(attacker:GetAttribute("Reloading") == true and attacker:GetAttribute("Ammo") == interruptedAmmo, "cancelled timer cannot finish a newer reload")
+    task.wait(0.6)
+    check(not attacker:GetAttribute("Reloading") and attacker:GetAttribute("Ammo") == Config.Magazine, "fresh reload completes normally")
     local scoreBefore = attacker.leaderstats.Score.Value
     local deathsBefore = victim.leaderstats.Deaths.Value
     vh.Health = 1
