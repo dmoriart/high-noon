@@ -10,8 +10,18 @@ return function(): {parts: number, spawns: number}
         if object:IsA("BasePart") then
             count += 1
             assert(object.Anchored, "Loose scenery: " .. object.Name)
-            assert(tags:HasTag(object, "NeedsArt"), "Untagged scenery: " .. object.Name)
-            assert(string.sub(object.Name, 1, 12) == "PLACEHOLDER_", "Unlabelled scenery: " .. object.Name)
+            local parent = object.Parent
+            local mounted = false
+            while parent and parent ~= arena do
+                if tags:HasTag(parent, "MountedArt") then mounted = true; break end
+                parent = parent.Parent
+            end
+            if mounted then
+                assert(not object.CanCollide and not object.CanQuery, "Visual art changed collision")
+            else
+                assert(tags:HasTag(object, "NeedsArt"), "Untagged scenery: " .. object.Name)
+                assert(string.sub(object.Name, 1, 12) == "PLACEHOLDER_", "Unlabelled scenery: " .. object.Name)
+            end
         end
     end
     assert(count < 400, "Arena exceeds the part budget")

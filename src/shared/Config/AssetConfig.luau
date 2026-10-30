@@ -1,7 +1,7 @@
 --!strict
 -- AI-generated greybox kits; Josh replaces these with original art.
 type Shape = {Name: string, Size: Vector3, Transform: CFrame, Material: Enum.Material, Shape: Enum.PartType?}
-type Prop = {Name: string, Parts: {Shape}}
+type Prop = {Name: string, Parts: {Shape}, Origin: CFrame, ArtSlot: string?}
 local scenery: {Prop} = {}
 
 local function shape(name: string, size: Vector3, transform: CFrame, material: Enum.Material, form: Enum.PartType?): Shape
@@ -12,9 +12,9 @@ local function beam(name: string, a: Vector3, b: Vector3, thickness: number): Sh
     return shape(name, Vector3.new(thickness, thickness, (b - a).Magnitude), CFrame.lookAt((a + b) / 2, b), Enum.Material.Wood, nil)
 end
 
-local function prop(name: string, at: CFrame, parts: {Shape})
+local function prop(name: string, at: CFrame, parts: {Shape}, artSlot: string?)
     for _, piece in parts do piece.Transform = at * piece.Transform end
-    table.insert(scenery, {Name = name, Parts = parts})
+    table.insert(scenery, {Name = name, Parts = parts, Origin = at, ArtSlot = artSlot})
 end
 
 for _, side in {-1, 1} do
@@ -67,7 +67,7 @@ for i, position in {Vector3.new(-13, 0, -8), Vector3.new(-15.5, 0, -6), Vector3.
     for _, y in {0.3, 2.7} do
         table.insert(barrel, shape("Hoop", Vector3.new(0.15, 2.4, 2.4), CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.pi / 2), Enum.Material.Metal, Enum.PartType.Cylinder))
     end
-    prop("Barrel" .. i, CFrame.new(position), barrel)
+    prop("Barrel" .. i, CFrame.new(position), barrel, "Barrel")
 end
 
 local canyon: {Shape} = {}
@@ -102,6 +102,16 @@ end
 prop("FrontierFence", CFrame.new(), fence)
 
 return {
+    Models = {Revolver = "", Storefront16 = "", Saloon20 = "", Crate = "", Barrel = ""} :: {[string]: string},
+    Animations = {Fire = "", Reload = ""} :: {[string]: string},
+    Sounds = {
+        Fire = {Id = "", Volume = 0.6},
+        Reload = {Id = "", Volume = 0.4},
+        Hit = {Id = "", Volume = 0.4},
+    } :: {[string]: {Id: string, Volume: number}},
+    AudioMaxDistance = 120,
+    AudioCleanupSeconds = 10,
+    ToolHandleSize = Vector3.new(0.2, 0.2, 0.2),
     Grey = Color3.fromRGB(132, 132, 132),
     SceneryGrey = Color3.fromRGB(180, 180, 180),
     Ground = Color3.fromRGB(190, 190, 190),
@@ -113,10 +123,10 @@ return {
         {Name = "Cylinder", Size = Vector3.new(0.5, 0.45, 0.5), Offset = CFrame.new(0, 0.35, -0.12)},
     },
     Buildings = {
-        {Name = "Saloon", Bars = false, Sign = "SALOON", Position = Vector3.new(-32, 0, -30), Width = 24, Depth = 24, Height = 20},
-        {Name = "Sheriff", Bars = true, Sign = "SHERIFF", Position = Vector3.new(32, 0, 30), Width = 24, Depth = 24, Height = 16},
-        {Name = "GeneralStore", Bars = false, Sign = "GENERAL STORE", Position = Vector3.new(-32, 0, 30), Width = 24, Depth = 24, Height = 16},
-        {Name = "Stable", Bars = false, Sign = "LIVERY", Position = Vector3.new(32, 0, -30), Width = 24, Depth = 24, Height = 16},
+        {Name = "Saloon", ArtSlot = "Saloon20", Bars = false, Sign = "SALOON", Position = Vector3.new(-32, 0, -30), Width = 24, Depth = 24, Height = 20},
+        {Name = "Sheriff", ArtSlot = "Storefront16", Bars = true, Sign = "SHERIFF", Position = Vector3.new(32, 0, 30), Width = 24, Depth = 24, Height = 16},
+        {Name = "GeneralStore", ArtSlot = "Storefront16", Bars = false, Sign = "GENERAL STORE", Position = Vector3.new(-32, 0, 30), Width = 24, Depth = 24, Height = 16},
+        {Name = "Stable", ArtSlot = "Storefront16", Bars = false, Sign = "LIVERY", Position = Vector3.new(32, 0, -30), Width = 24, Depth = 24, Height = 16},
     },
     Cover = {Vector3.new(-8, 2, -15), Vector3.new(8, 2, 15), Vector3.new(-12, 2, 42), Vector3.new(12, 2, -42)},
     SpawnPositions = {Vector3.new(-10, 1, -55), Vector3.new(10, 1, 55), Vector3.new(-50, 1, 0), Vector3.new(50, 1, 0)},

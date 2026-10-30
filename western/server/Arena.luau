@@ -2,6 +2,7 @@
 local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
 local Assets = require(game:GetService("ReplicatedStorage").Config.AssetConfig)
+local Art = require(game:GetService("ReplicatedStorage").HighNoon.Art)
 local Arena = {}
 
 local function part(parent: Instance, name: string, size: Vector3, position: Vector3, material: Enum.Material?): Part
@@ -18,7 +19,7 @@ local function part(parent: Instance, name: string, size: Vector3, position: Vec
     return p
 end
 
-type Building = {Name: string, Sign: string, Position: Vector3, Width: number, Depth: number, Height: number, Bars: boolean}
+type Building = {Name: string, Sign: string, Position: Vector3, Width: number, Depth: number, Height: number, Bars: boolean, ArtSlot: string}
 
 local function building(parent: Instance, b: Building)
     local style = Assets.BuildingStyle
@@ -75,6 +76,13 @@ local function building(parent: Instance, b: Building)
     label.TextColor3 = Color3.fromRGB(30, 30, 30)
     label.Font = Enum.Font.Antique
     label.Parent = gui
+    local colliders: {BasePart} = {}
+    for _, object in model:GetDescendants() do
+        if object:IsA("BasePart") and object.Name ~= "PLACEHOLDER_Sign" and object.Name ~= "PLACEHOLDER_SignFrame" then
+            table.insert(colliders, object)
+        end
+    end
+    Art.mount(b.ArtSlot, model, CFrame.lookAt(b.Position, b.Position + Vector3.new(facing, 0, 0)), colliders)
 end
 
 function Arena.build(): {SpawnLocation}
@@ -105,9 +113,17 @@ function Arena.build(): {SpawnLocation}
             p.CFrame = piece.Transform
             if piece.Shape then p.Shape = piece.Shape end
         end
+        if prop.ArtSlot then
+            local colliders: {BasePart} = {}
+            for _, object in model:GetDescendants() do
+                if object:IsA("BasePart") then table.insert(colliders, object) end
+            end
+            Art.mount(prop.ArtSlot, model, prop.Origin, colliders)
+        end
     end
     for i, position in Assets.Cover do
-        part(arena, "Crate" .. i, Assets.CoverSize, position, Assets.BuildingStyle.Material)
+        local crate = part(arena, "Crate" .. i, Assets.CoverSize, position, Assets.BuildingStyle.Material)
+        Art.mount("Crate", crate, CFrame.new(position - Vector3.new(0, Assets.CoverSize.Y / 2, 0)), {crate})
     end
     local x, z, h = Assets.ArenaSize.X / 2, Assets.ArenaSize.Z / 2, Assets.WallHeight
     for _, side in {-1, 1} do
@@ -144,18 +160,14 @@ function Arena.revolver(): Tool
     local tool = Instance.new("Tool")
     tool.Name, tool.CanBeDropped = "Revolver", false
     tool:SetAttribute("HighNoonWeapon", true)
-    for _, shape in Assets.Revolver do
-        local p = part(tool, shape.Name, shape.Size, Vector3.zero)
-        p.Name = if shape.Name == "Handle" then "Handle" else "PLACEHOLDER_" .. shape.Name
-        p.CFrame, p.Anchored, p.CanCollide, p.Massless = shape.Offset, false, false, true
-    end
-    local handle = tool:FindFirstChild("Handle") :: BasePart
-    for _, child in tool:GetChildren() do
-        if child:IsA("BasePart") and child ~= handle then
-            local weld = Instance.new("WeldConstraint")
-            weld.Part0, weld.Part1, weld.Parent = handle, child, handle
-        end
-    end
+    local visual = Art.weapon(false)
+    local handle = Instance.new("Part")
+    handle.Name, handle.Size, handle.Transparency = "Handle", Assets.ToolHandleSize, 1
+    handle.CanCollide, handle.CanQuery, handle.CanTouch, handle.Massless = false, false, false, true
+    handle.Parent = tool
+    visual.Parent = tool
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0, weld.Part1, weld.Parent = handle, visual.PrimaryPart, handle
     return tool
 end
 

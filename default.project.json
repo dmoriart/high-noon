@@ -5,6 +5,7 @@
     "ReplicatedStorage": {
       "HighNoon": {"$path": "western/shared"},
       "Config": {"$path": "src/shared/Config"},
+      "Art": {"$path": "src/shared/Art", "$ignoreUnknownInstances": true},
       "UpstreamMovementConfig": {"$path": "src/server/MovementScript/config.lua"}
     },
     "ServerScriptService": {"HighNoon": {"$path": "western/server"}},

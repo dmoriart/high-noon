@@ -9,6 +9,7 @@ type State = {character: Model, ammo: number, reloadUntil: number, lastShot: num
 local states: {[Player]: State} = {}
 local remote: RemoteEvent
 local onKill: (Player, Player) -> ()
+local onAction: (Player, string) -> ()
 local active = false
 
 local function publish(player: Player, state: State)
@@ -73,7 +74,7 @@ function Combat.request(player: Player, action: any, requestId: any, origin: any
             remote:FireClient(player, "ReloadCancelled")
         end)
         publish(player, state)
-        remote:FireClient(player, "Reload")
+        remote:FireClient(player, "Reload", workspace:GetServerTimeNow() + Config.ReloadSeconds)
         task.delay(Config.ReloadSeconds, function()
             if states[player] ~= state or state.reloadId ~= requestId then return end
             clearReload(state)
@@ -83,6 +84,7 @@ function Combat.request(player: Player, action: any, requestId: any, origin: any
             end
             state.ammo = Config.Magazine
             publish(player, state)
+            onAction(player, "WesternFirstReload")
         end)
         return "reload started"
     end
@@ -120,11 +122,12 @@ function Combat.request(player: Player, action: any, requestId: any, origin: any
     end
     remote:FireAllClients("Shot", player, head.Position, endPosition)
     remote:FireClient(player, "Fired", hit)
+    onAction(player, "WesternFirstShot")
     return "fired"
 end
 
-function Combat.start(event: RemoteEvent, killCallback: (Player, Player) -> ())
-    remote, onKill = event, killCallback
+function Combat.start(event: RemoteEvent, killCallback: (Player, Player) -> (), actionCallback: (Player, string) -> ())
+    remote, onKill, onAction = event, killCallback, actionCallback
     remote.OnServerEvent:Connect(function(player: Player, action: any, requestId: any, origin: any, direction: any)
         Combat.request(player, action, requestId, origin, direction)
     end)

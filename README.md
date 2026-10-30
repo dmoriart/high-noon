@@ -14,7 +14,7 @@ The prototype is a frontier street shootout with one revolver, respawns, a score
 - A Western greybox town with wooden storefronts, boardwalks, a water tower, wagon, barrels, fencing, canyon silhouettes and warm afternoon lighting, tagged `NeedsArt` for Josh's art pass.
 - First-person HUD and a grey camera revolver; firing and reload animation hooks are available for art integration.
 
-Controls: WASD/stick to move, jump with the normal Roblox controls, click/tool activation to fire, R/gamepad X/touch Reload to reload. Mobile and gamepad controls are implemented but require device testing.
+Controls: WASD/stick to move, jump with the normal Roblox controls, click/touch Fire/gamepad RT to fire, R/gamepad X/touch Reload to reload. Mobile and gamepad controls are implemented but require device testing.
 
 ## Build and play
 
@@ -28,7 +28,7 @@ The default project maps only the self-contained Western runtime under `western/
 
 The prototype reuses Evostrike's walking/jump tuning and adapts its damage multipliers/falloff approach; it does not yet port its full Source-style movement or weapon presentation systems. No player progress is saved in this milestone.
 
-See [the milestone spec](docs/specs/SPEC-western-shooter.md), [validation notes](docs/VALIDATION.md), and [Josh's art requests](docs/ART-REQUESTS.md). Server analytics record match joined, completed and second match joined; Studio prints these events instead of sending live analytics.
+See [the milestone spec](docs/specs/SPEC-western-shooter.md), [validation notes](docs/VALIDATION.md), and [Josh's art requests](docs/ART-REQUESTS.md). Start with [Josh’s first art checklist](docs/JOSH-FIRST-ART.md), then [the friends-playtest checklist](docs/FRIENDS-PLAYTEST.md). Models and first-person animations can be supplied through AssetConfig without rewriting combat. Server analytics record first accepted shot, first completed reload, match joined, completed and second match joined; Studio prints these events instead of sending live analytics.
 
 ## Credits and licence
 

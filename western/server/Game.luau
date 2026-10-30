@@ -12,6 +12,7 @@ local phase = "Waiting"
 local deadline = 0
 local scores: {[Player]: number} = {}
 local joined: {[Player]: boolean} = {}
+local steps: {[Player]: {[string]: boolean}} = {}
 local matchesJoined: {[Player]: number} = {}
 local spawns: {SpawnLocation} = {}
 local spawnIndex = 0
@@ -40,6 +41,15 @@ local function joinMatch(player: Player)
     matchesJoined[player] = (matchesJoined[player] or 0) + 1
     analytics(player, "WesternMatchJoined")
     if matchesJoined[player] == 2 then analytics(player, "WesternSecondMatchJoined") end
+end
+
+local function recordAction(player: Player, name: string)
+    if not joined[player] then return end
+    local recorded = steps[player]
+    if not recorded then recorded = {}; steps[player] = recorded end
+    if recorded[name] then return end
+    recorded[name] = true
+    task.defer(analytics, player, name)
 end
 
 local function score(player: Player): IntValue
@@ -124,6 +134,7 @@ function Game.update()
     if phase == "Waiting" and count >= Config.MinPlayers then
         matchId += 1
         joined = {}
+        steps = {}
         pendingSpawn = {}
         local preparingMatch = matchId
         ReplicatedStorage.HighNoon:SetAttribute("MatchId", matchId)
@@ -173,12 +184,13 @@ function Game.start()
     spawns = Arena.build()
     local remote = Instance.new("RemoteEvent")
     remote.Name, remote.Parent = "Combat", ReplicatedStorage.HighNoon
-    Combat.start(remote, kill)
+    Combat.start(remote, kill, recordAction)
     setPhase("Waiting")
     ReplicatedStorage.HighNoon:SetAttribute("Result", "")
     Players.PlayerAdded:Connect(addPlayer)
     Players.PlayerRemoving:Connect(function(player)
         scores[player], joined[player], matchesJoined[player], pendingSpawn[player] = nil, nil, nil, nil
+        steps[player] = nil
         Combat.remove(player)
     end)
     for _, player in Players:GetPlayers() do addPlayer(player) end

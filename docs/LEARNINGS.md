@@ -7,3 +7,5 @@
 - 2026-10-30: The HUD's top-bar inset put the crosshair 29 pixels away from the camera ray; measured in a live client. Keep aim markers in a viewport-aligned layer and verify the physical pixel position after resizing.
 - 2026-10-30: Unequipping and re-equipping during a reload still refilled ammo; a scripted swap reproduced it. Cancel on Unequipped, disconnect the listener, and require delayed completion to match that exact reload request.
 - 2026-10-30: A temporary town preview survived a Studio reopen/publish, which would trip the runtime's duplicate-arena check. Mark generated previews explicitly, replace only tagged greybox parts at startup, and refuse replacement if protected or unrecognised art was added.
+
+- 2026-10-30: Playtesting found mouse-tool activation unreliable and touch Fire overlapping Jump. Bind mouse firing explicitly with GUI/chat guards and a shared debounce; check accepted server ammo changes, and position touch buttons after Roblox creates them. A tool reporting input success is not proof that the game received it.

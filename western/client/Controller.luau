@@ -4,6 +4,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+local Art = require(ReplicatedStorage.HighNoon.Art)
+local Presentation = require(script.Parent.Presentation)
 local Assets = require(ReplicatedStorage.Config.AssetConfig)
 local Config = require(ReplicatedStorage.HighNoon.Config)
 local Controller = {}
@@ -14,6 +19,7 @@ function Controller.start()
     local remote = shared:WaitForChild("Combat") :: RemoteEvent
     local sequence = 0
     local lastShot = -math.huge
+    local nextFire = 0
     local compact = false
     local gui = Instance.new("ScreenGui")
     gui.Name, gui.ResetOnSpawn, gui.IgnoreGuiInset = "HighNoonHUD", false, false
@@ -45,12 +51,23 @@ function Controller.start()
     crosshair.Parent = aim
     crosshair.BackgroundTransparency = 1
     local ammo = label("Ammo", UDim2.new(0.48, 0, 0, 44), UDim2.new(0.5, 0, 1, -52), "REVOLVER  6 / 6")
+    local reloadBar = Instance.new("Frame")
+    reloadBar.Name, reloadBar.Size, reloadBar.Position = "ReloadProgress", UDim2.fromScale(0, 0.08), UDim2.fromScale(0, 0.92)
+    reloadBar.BackgroundColor3, reloadBar.BorderSizePixel = Color3.fromRGB(218, 172, 98), 0
+    reloadBar.Parent = ammo
+    local reloadTween: Tween? = nil
+    local presentation: Presentation.WeaponPresentation? = nil
+    local function stopReload()
+        if reloadTween then reloadTween:Cancel(); reloadTween = nil end
+        reloadBar.Size = UDim2.fromScale(0, 0.08)
+        if presentation then presentation.cancelReload() end
+    end
     local health = label("Health", UDim2.new(0.46, 0, 0, 44), UDim2.new(0.02, 0, 1, -52), "HEALTH  100")
     local toast = label("Feedback", UDim2.new(0.7, 0, 0, 34), UDim2.fromScale(0.15, 0.65), "")
     toast.Visible = false
     local board = label("Scores", UDim2.new(0.3, 0, 0, 180), UDim2.new(0.69, 0, 0, 96), "")
     board.TextSize, board.TextYAlignment = 15, Enum.TextYAlignment.Top
-    local controls = label("Controls", UDim2.new(0.65, 0, 0, 38), UDim2.new(0.02, 0, 1, -94), "Click / tap weapon: fire • R / X: reload • WASD / stick: move")
+    local controls = label("Controls", UDim2.new(0.65, 0, 0, 38), UDim2.new(0.02, 0, 1, -94), "Click / Fire / RT: shoot • R / X: reload • WASD / stick: move")
     local toastId = 0
     local function message(text: string)
         toastId += 1
@@ -60,6 +77,7 @@ function Controller.start()
     end
 
     local function updateAmmo()
+        if not player:GetAttribute("Reloading") then stopReload() end
         ammo.Text = if player:GetAttribute("Reloading") then "RELOADING…" else "REVOLVER  " .. tostring(player:GetAttribute("Ammo") or Config.Magazine) .. " / " .. Config.Magazine
     end
     player:GetAttributeChangedSignal("Ammo"):Connect(updateAmmo)
@@ -68,6 +86,7 @@ function Controller.start()
     local function updateMatch()
         local phase = shared:GetAttribute("Phase") or "Waiting"
         local seconds = shared:GetAttribute("Seconds") or 0
+        if phase ~= "Shootout" then stopReload() end
         if phase == "Waiting" then status.Text = "Waiting for a second gunslinger • " .. Config.ScoreToWin .. " eliminations to win"
         elseif phase == "Preparing" then status.Text = "Preparing the shootout…"
         elseif phase == "Intermission" then status.Text = (shared:GetAttribute("Result") or "Round over") .. " • Next shootout in " .. seconds
@@ -127,40 +146,63 @@ function Controller.start()
     for _, p in Players:GetPlayers() do watchScore(p) end
 
     local function request(action: string)
+        if GuiService.MenuIsOpen or UserInputService:GetFocusedTextBox() then return end
         local character = player.Character
         local tool = if character then character:FindFirstChildOfClass("Tool") else nil
         if not tool or not tool:GetAttribute("HighNoonWeapon") then return end
-        if shared:GetAttribute("Phase") ~= "Shootout" then message("Shootout starts when two players join"); return end
+        local phase = shared:GetAttribute("Phase")
+        if phase ~= "Shootout" then
+            message(if phase == "Intermission" then "Round over • Next shootout starts shortly" elseif phase == "Preparing" then "Preparing the shootout…" else "Waiting for another gunslinger")
+            return
+        end
+        if player:GetAttribute("Reloading") then return end
         if action == "Fire" and (player:GetAttribute("Ammo") or 0) <= 0 then message("Reload your revolver • R / X"); return end
         local camera = workspace.CurrentCamera
         if not camera then return end
+        if action == "Fire" then
+            if os.clock() < nextFire then return end
+            nextFire = os.clock() + Config.FireInterval
+        end
         sequence += 1
         local ray = camera:ViewportPointToRay(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
         remote:FireServer(action, sequence, ray.Origin, ray.Direction.Unit)
     end
+    ContextActionService:BindActionAtPriority("HighNoonFire", function(_, state, input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if input.Position.Y < GuiService:GetGuiInset().Y then return Enum.ContextActionResult.Pass end
+            for _, object in player.PlayerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y) do
+                if object:IsA("GuiButton") or object:FindFirstAncestorWhichIsA("GuiButton") then
+                    return Enum.ContextActionResult.Pass
+                end
+            end
+        end
+        if state == Enum.UserInputState.Begin then request("Fire") end
+        return Enum.ContextActionResult.Sink
+    end, true, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseButton1, Enum.KeyCode.ButtonR2)
+    ContextActionService:SetTitle("HighNoonFire", "Fire")
     ContextActionService:BindAction("HighNoonReload", function(_, state)
         if state == Enum.UserInputState.Begin then request("Reload") end
         return Enum.ContextActionResult.Sink
     end, true, Enum.KeyCode.R, Enum.KeyCode.ButtonX)
     ContextActionService:SetTitle("HighNoonReload", "Reload")
-    ContextActionService:SetPosition("HighNoonReload", UDim2.fromScale(0.72, 0.7))
+    local function positionTouchButtons()
+        ContextActionService:SetPosition("HighNoonFire", UDim2.fromScale(0.55, -0.3))
+        ContextActionService:SetPosition("HighNoonReload", UDim2.fromScale(0.1, 0.35))
+    end
+    -- Core controls create the buttons after binding and assign their initial positions.
+    local touchLayoutConnection = player.PlayerGui.DescendantAdded:Connect(function(child)
+        if child:IsA("GuiButton") and child.Parent and child.Parent.Name == "ContextButtonFrame" then
+            task.defer(positionTouchButtons)
+        end
+    end)
+    task.defer(positionTouchButtons)
 
     local healthConnection: RBXScriptConnection? = nil
-    local viewmodel = Instance.new("Model")
-    viewmodel.Name = "PLACEHOLDER_RevolverViewmodel"
-    local CollectionService = game:GetService("CollectionService")
-    CollectionService:AddTag(viewmodel, "NeedsArt")
-    for _, shape in Assets.Revolver do
-        local piece = Instance.new("Part")
-        piece.Name = "PLACEHOLDER_" .. shape.Name
-        piece.Size, piece.CFrame = shape.Size, shape.Offset
-        piece.Anchored, piece.CanCollide, piece.CanQuery, piece.CanTouch = true, false, false, false
-        piece.Color, piece.CastShadow = Assets.Grey, false
-        CollectionService:AddTag(piece, "NeedsArt")
-        piece.Parent = viewmodel
-    end
-    viewmodel.PrimaryPart = viewmodel:FindFirstChild("PLACEHOLDER_Handle") :: BasePart
+    local viewmodel = Art.weapon(true)
+    if not viewmodel:GetAttribute("SourceArt") then viewmodel.Name = "PLACEHOLDER_RevolverViewmodel" end
     viewmodel:ScaleTo(Assets.ViewmodelScale)
+    local weaponPresentation = Presentation.new(viewmodel)
+    presentation = weaponPresentation
     local visible = false
     -- A camera-attached model must follow the rendered camera each frame.
     RunService:BindToRenderStep("HighNoonViewmodel", Enum.RenderPriority.Camera.Value + 1, function()
@@ -180,17 +222,23 @@ function Controller.start()
         end
     end)
     gui.Destroying:Connect(function()
+        touchLayoutConnection:Disconnect()
         RunService:UnbindFromRenderStep("HighNoonViewmodel")
         ContextActionService:UnbindAction("HighNoonReload")
+        ContextActionService:UnbindAction("HighNoonFire")
+        weaponPresentation.destroy()
         viewmodel:Destroy()
         aim:Destroy()
         if healthConnection then healthConnection:Disconnect() end
         for _, connection in scoreConnections do connection:Disconnect() end
     end)
     local function characterAdded(character: Model)
+        nextFire = 0
+        stopReload()
         if healthConnection then healthConnection:Disconnect() end
         local humanoid = character:WaitForChild("Humanoid") :: Humanoid
         local function updateHealth()
+            if humanoid.Health <= 0 then stopReload() end
             health.Text = if humanoid.Health <= 0 then "DOWN • Returning to the street…" else "HEALTH  " .. math.ceil(humanoid.Health)
         end
         healthConnection = humanoid.HealthChanged:Connect(updateHealth)
@@ -199,6 +247,7 @@ function Controller.start()
             if child:IsA("Tool") and child:GetAttribute("HighNoonWeapon") and not child:GetAttribute("ClientBound") then
                 child:SetAttribute("ClientBound", true)
                 child.Activated:Connect(function() request("Fire") end)
+                child.Unequipped:Connect(stopReload)
             end
         end
         character.ChildAdded:Connect(equipped)
@@ -219,13 +268,24 @@ function Controller.start()
             beam.Size, beam.CFrame = Vector3.new(Config.TracerWidth, Config.TracerWidth, distance), CFrame.lookAt((b + c) / 2, c)
             beam.Parent = workspace
             Debris:AddItem(beam, Config.TracerSeconds)
+            weaponPresentation.fire(a, b)
             hooks:Fire("Fire", a)
         elseif action == "Reload" then
+            if shared:GetAttribute("Phase") ~= "Shootout" then return end
+            local character = player.Character
+            if not character or not character:FindFirstChildOfClass("Tool") then return end
+            stopReload()
+            local remaining = math.max(0, a - workspace:GetServerTimeNow())
+            reloadTween = TweenService:Create(reloadBar, TweenInfo.new(remaining, Enum.EasingStyle.Linear), {Size = UDim2.fromScale(1, 0.08)})
+            reloadTween:Play()
+            weaponPresentation.reload()
             hooks:Fire("Reload", player)
         elseif action == "ReloadCancelled" then
+            stopReload()
             hooks:Fire("ReloadCancelled", player)
             message("Reload interrupted")
         elseif action == "Fired" then
+            if a then weaponPresentation.hit() end
             lastShot = os.clock()
             local camera = workspace.CurrentCamera
             if camera then camera.CFrame *= CFrame.Angles(math.rad(Config.RecoilDegrees), 0, 0) end

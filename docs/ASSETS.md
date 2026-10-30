@@ -29,3 +29,12 @@ All entries below are AI-generated greybox/reference work made from Luau primiti
 | Dusty ground and afternoon lighting | AI-assisted reference setup | Studio Sand, Atmosphere and colour correction | 2026-10-30 | Art direction proposal |
 
 The coloured desert mesas already present in the Studio place were preserved; this pass did not create or replace them. Their source/creator is not established by the repository records above.
+
+## First friends-playtest handoff — 2026-10-30
+
+| Asset | Creator | Tools | Date | Status |
+| --- | --- | --- | --- | --- |
+| Reload progress display and Fire/Reload control layout | AI-assisted | Luau / Roblox built-in GUI controls | 2026-10-30 | Prototype UI for review |
+| QA weapon, crate and invalid-import fixtures | AI-generated greybox | Luau primitive Parts | 2026-10-30 | Temporary test models, removed by tests; not shipped art |
+
+Revolver, Storefront16, Saloon20, Crate and Barrel model slots, Fire/Reload animation slots and optional sound slots are blank. Josh has not supplied assets in this session; add individual provenance rows when his work is imported. No final art was generated or existing art replaced.
