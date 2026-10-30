@@ -1,22 +1,21 @@
-# Evostrike
- [Evostrike](https://www.roblox.com/games/11287185880/Evostrike-BETA) is a multiplayer FPS game made in Roblox Studio, which is deeply inspired by Source Engine.
- Programming and engine work done by myself, as well as animations and some of the maps. Assets are all made by my brother, [Donut](https://github.com/metr0nme)
+# High Noon
 
- This is my *baby*. Counter-Strike has been a passion of mine for a long time, and it's my dream to become professionally involved with something related to CS or Source Engine.
- 
-## Features
-- Custom source-based movement with the main goal of having movement that feels like a mix between CSS and CSGO. I used [Fragsurf](https://github.com/Olezen/UnitySourceMovement) as a reference
-- Fine tuned recoil patterns to match that of CSGO, which when combined with the source movement, makes for a heavily mechanical tactical shooter that is rewarding to master
-- Skins, knives, and cases
-- A large codebase that supports modding for gamemodes, weapons, movement and more
+An original cowboy multiplayer shooter for Roblox, built on the [Evostrike framework](https://github.com/beters02/Evostrike). High Noon is a working title chosen by Des.
 
-## Codebase References
-- Movement: src/client/character/movementScript && src/server/MovementScript
-- Weapons: service/WeaponService
-- Custom States Module: module/States
+The proposed first playable version is a frontier street shootout with one revolver, respawns, a scoreboard and a match result. The visual direction takes inspiration from cinematic Westerns and the atmosphere of Red Dead Redemption, with original characters, maps, music and art by Josh.
 
-## Links
-- [Game](https://www.roblox.com/games/11287185880/Evostrike-BETA)
-- [Official Evostrike Teaser, Youtube](https://www.youtube.com/watch?v=xN6tvV9pZuY&feature=youtu.be)
-- [Official Roblox DevForums Movement Template release](https://devforum.roblox.com/t/source-engine-movement-open-sourced/3008646)
-- [Fragsurf](https://github.com/Olezen/UnitySourceMovement)
+## Current status
+
+The Western conversion has started with project identity, planning and a dependency audit. The inherited game has not yet been built or playtested for this fork; this is not yet a playable Western release.
+
+See [the milestone proposal](docs/specs/SPEC-western-shooter.md) and [Josh's proposed art requests](docs/ART-REQUESTS.md). Missing Studio scene and interface dependencies must be resolved before gameplay testing.
+
+## Project setup
+
+`default.project.json` maps the source into Roblox Studio using Rojo; `aftman.toml` pins Rojo 7.4.0. A source build alone does not supply all inherited Studio models, interfaces and maps. Existing teleport destinations also need to be replaced with places owned by this project before travel is tested.
+
+## Credits and licence
+
+Based on Evostrike by [beters02](https://github.com/beters02), who credits himself for programming, engine work, animations and some maps, and his brother [Donut](https://github.com/metr0nme) for assets. Evostrike cites [Fragsurf](https://github.com/Olezen/UnitySourceMovement) as a movement reference.
+
+The [original README](docs/UPSTREAM-README.md) is preserved for full upstream context and links. The [GPL-2.0 licence](LICENSE.txt) remains included. Existing Evostrike assets are upstream work; Josh's future art will be credited separately.

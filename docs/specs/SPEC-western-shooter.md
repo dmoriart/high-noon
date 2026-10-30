@@ -1,7 +1,7 @@
-# Western multiplayer shooter — proposal
+# High Noon — Western multiplayer shooter proposal
 
 Date: 2026-10-30
-Status: first milestone proposed; game title awaiting Des's choice.
+Status: High Noon working title approved by Des; first milestone ready for review.
 
 ## Direction
 
