@@ -13,3 +13,11 @@ The runtime HUD exposes `PlayerGui.HighNoonHUD.WeaponPresentation`, a BindableEv
 The grey camera revolver now follows the player's view and kicks when the server accepts a shot. Replace its shape definitions through AssetConfig; a polished rigged weapon will need a separate integration pass. Suggested capture: wide street shot; identical view with Josh's buildings; close-up firing and reload once animations are ready.
 
 2026-10-30 reliability pass: the existing WeaponPresentation event now also fires `ReloadCancelled` with the local Player when switching weapons interrupts a reload. Use it to stop the reload animation; it does not require new art. The crosshair now lives under `PlayerGui.HighNoonAim.Crosshair` so it aligns with the camera independently of the HUD's safe-area margins.
+
+## Frontier town blockout — 2026-10-30
+
+The arena now provides reference silhouettes for false-front storefronts, porch posts/rails, boardwalk planks, barred sheriff windows, a water tower, supply wagon, barrels and hitching rails. These remain grey primitives under warm lighting, ready for Josh's original meshes and textures; the revolver remains the first suggested art task.
+
+The water tower now frames the end of the main street. Use the town geometry and footprint as a guide when replacing props so the clear doorways, four spawn areas and firing lane survive the art pass. The perimeter fence marks the arena limits; the existing tall collision boundary is invisible behind it.
+
+Portfolio capture: street camera at (0, 7, 58) looking toward (0, 8, -35); overview at (0, 27, 62) looking toward (0, 8, -18). Save the blockout shot, then repeat those camera positions after Josh's art pass. This static environment adds no reveal animation; the existing weapon animation hooks remain available.

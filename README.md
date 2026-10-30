@@ -11,7 +11,7 @@ The prototype is a frontier street shootout with one revolver, respawns, a score
 - Unequipping interrupts a reload; cancelled timers cannot complete a newer reload.
 - A viewport-aligned crosshair and compact HUD on short/narrow screens keep the aim accurate and touch-control areas clear.
 - Respawns, short spawn protection (lost on firing), live scores, match results and automatic next rounds.
-- Grey frontier buildings and cover tagged `NeedsArt`, ready for Josh's art pass.
+- A Western greybox town with wooden storefronts, boardwalks, a water tower, wagon, barrels, fencing, canyon silhouettes and warm afternoon lighting, tagged `NeedsArt` for Josh's art pass.
 - First-person HUD and a grey camera revolver; firing and reload animation hooks are available for art integration.
 
 Controls: WASD/stick to move, jump with the normal Roblox controls, click/tool activation to fire, R/gamepad X/touch Reload to reload. Mobile and gamepad controls are implemented but require device testing.

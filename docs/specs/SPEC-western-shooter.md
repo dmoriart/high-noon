@@ -57,3 +57,13 @@ We believe first-time players will trust aiming and reload feedback because the 
 Checks before implementation: reproduce the crosshair/camera-center offset in Studio; reproduce ammo refilling after unequipping and re-equipping during a reload. After implementation: crosshair center matches the camera viewport center, including after resizing; unequip cancels the reload immediately; its delayed callback cannot refill a later reload; a fresh reload still completes; existing combat and match lifecycle tests pass. Preserve all art and original source.
 
 Phone simulation also exposed the desktop HUD overlapping touch-control areas. This pass adds a compact layout on short or narrow viewports: health/ammo move below the match header, own score stays in the title, and the large scoreboard/control legend are hidden. Check both layout modes and score updates after resizing.
+
+## Western arena style pass — 2026-10-30
+
+Des requested a Western style for the game area. Build a labelled greybox frontier town: wood-textured storefront shapes with false fronts, open doorways, porch railings, boardwalks, a water tower, a wagon, barrels and hitching rails. Replace the plain-looking perimeter with a canyon silhouette and use warm late-afternoon lighting and restrained haze. These are AI-generated blockout assets for Josh to replace, not final art. Leave weapon tuning, spawns and the central shooting lane unchanged.
+
+We believe first-time players will recognise the arena as a Western town because its buildings, props and lighting communicate the setting together. We'll know if four of five playtesters identify it as a Western town from a screenshot without seeing the title. Existing match retention analytics remain the gameplay metric; this visual pass adds no new interaction funnel.
+
+Acceptance checks: all new scenery is tagged NeedsArt and labelled PLACEHOLDER_; art definitions stay in AssetConfig; no JoshArt is changed; every spawn has room for a character; the main shooting lane stays clear; ground/cover still block bullets; Solo starts without game-script errors; inspect street-level and overhead screenshots; attempt a two-player local join/combat check and report any launcher limitations. Keep the scene below 400 primitive parts and add no per-frame scenery loops or external asset IDs.
+
+The style pass uses a visible frontier fence around the unchanged collision bounds and moves rock silhouettes beyond the playable perimeter. A marked editor-only preview may be rebuilt at startup; replacement refuses any JoshArt or untagged parts. This keeps a saved reference view from breaking Play without deleting protected art.
