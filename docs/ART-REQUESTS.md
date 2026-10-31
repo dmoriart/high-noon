@@ -29,3 +29,9 @@ Start with [Josh’s ordered brief](JOSH-FIRST-ART.md): (1) revolver, (2) fire a
 Model slots clone source art from ReplicatedStorage.Art; map names and media IDs through AssetConfig. Static cosmetic models retain invisible greybox collision so replacing art does not change shooting lanes. Blank slots retain greyboxes; configured missing models or embedded scripts fail clearly. Fire/Reload playback is wired for the first-person weapon, with cancellation on interruption; third-person hand/body animation remains later work. Optional fire/reload/hit sound slots are also available.
 
 Portfolio capture: save the greybox street shot and first-person reload, then repeat the same shots after Josh’s first pack is imported. Record Josh as creator only for assets he actually supplies.
+
+## Practice and promotion brief — 2026-10-31
+
+The waiting range adds three AI-generated grey target boards with a shared `PracticeTarget` model slot. Optional later art: one original wooden target, 3 × 4 × 0.5 studs, bottom-centre pivot, Y up, face toward +Z. It must fill the tested rectangle; source art stays in ReplicatedStorage.Art and is cloned. The revolver/Fire/Reload pack in JOSH-FIRST-ART.md remains Josh’s first priority.
+
+After a practice hit, the existing `WeaponPresentation` Fire event and confirmed hit marker provide shot feedback; target movement/reveal animation is not implemented in this milestone. Capture the same three-target view before/after Josh’s target art, then his revolver firing and an interrupted reload. PROMO-BRIEF.md describes later icon/thumbnail/clip work using his approved assets and actual footage.

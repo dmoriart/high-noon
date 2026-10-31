@@ -6,12 +6,15 @@ local AnalyticsService = game:GetService("AnalyticsService")
 local Config = require(ReplicatedStorage.HighNoon.Config)
 local Arena = require(script.Parent.Arena)
 local Combat = require(script.Parent.Combat)
+local Practice = require(script.Parent.Practice)
+local Assets = require(ReplicatedStorage.Config.AssetConfig)
 local Game = {}
 local matchId = 0
 local phase = "Waiting"
 local deadline = 0
 local scores: {[Player]: number} = {}
 local joined: {[Player]: boolean} = {}
+local practiceSteps: {[Player]: {[string]: boolean}} = {}
 local steps: {[Player]: {[string]: boolean}} = {}
 local matchesJoined: {[Player]: number} = {}
 local spawns: {SpawnLocation} = {}
@@ -32,7 +35,18 @@ end
 local function setPhase(value: string)
     phase = value
     ReplicatedStorage.HighNoon:SetAttribute("Phase", phase)
-    Combat.setActive(phase == "Shootout")
+    Combat.setActive(false)
+    Combat.setPractice(phase == "Waiting")
+    Practice.setEnabled(phase == "Waiting")
+    for i, spawn in spawns do
+        spawn.CFrame = if phase == "Waiting" then Assets.Practice.Spawn - Vector3.new(0, 4, 0) else CFrame.new(Assets.SpawnPositions[i])
+    end
+    if phase == "Waiting" then
+        for _, player in Players:GetPlayers() do
+            if player.Character then player.Character:PivotTo(Assets.Practice.Spawn) end
+        end
+    end
+    Combat.setActive(phase == "Shootout" or phase == "Waiting")
 end
 
 local function joinMatch(player: Player)
@@ -44,9 +58,10 @@ local function joinMatch(player: Player)
 end
 
 local function recordAction(player: Player, name: string)
-    if not joined[player] then return end
-    local recorded = steps[player]
-    if not recorded then recorded = {}; steps[player] = recorded end
+    local records = if phase == "Waiting" then practiceSteps else steps
+    if phase ~= "Waiting" and not joined[player] then return end
+    local recorded = records[player]
+    if not recorded then recorded = {}; records[player] = recorded end
     if recorded[name] then return end
     recorded[name] = true
     task.defer(analytics, player, name)
@@ -86,7 +101,7 @@ local function spawnCharacter(player: Player, character: Model)
     character:WaitForChild("HumanoidRootPart")
     if player.Character ~= character then return end
     spawnIndex = spawnIndex % #spawns + 1
-    character:PivotTo(spawns[spawnIndex].CFrame + Vector3.new(0, 4, 0))
+    character:PivotTo(if phase == "Waiting" then Assets.Practice.Spawn else spawns[spawnIndex].CFrame + Vector3.new(0, 4, 0))
     humanoid.MaxHealth, humanoid.Health = Config.MaxHealth, Config.MaxHealth
     humanoid.WalkSpeed, humanoid.UseJumpPower, humanoid.JumpPower = Config.WalkSpeed, true, Config.JumpPower
     character:SetAttribute("ProtectedUntil", os.clock() + Config.SpawnProtectionSeconds)
@@ -106,11 +121,13 @@ local function spawnCharacter(player: Player, character: Model)
         deaths.Value += 1
     end)
     character:SetAttribute("SpawnMatchId", matchId)
+    if phase == "Waiting" then recordAction(player, "WesternPracticeEntered") end
 end
 
 local function addPlayer(player: Player)
     if scores[player] ~= nil then return end
     scores[player] = 0
+    player:SetAttribute("PracticeHits", 0)
     local stats = Instance.new("Folder")
     stats.Name, stats.Parent = "leaderstats", player
     for _, name in {"Score", "Deaths"} do
@@ -139,6 +156,8 @@ function Game.update()
         local preparingMatch = matchId
         ReplicatedStorage.HighNoon:SetAttribute("MatchId", matchId)
         ReplicatedStorage.HighNoon:SetAttribute("Result", "")
+        deadline = now + Config.SpawnTimeoutSeconds
+        setPhase("Preparing")
         for _, player in Players:GetPlayers() do
             scores[player] = 0
             score(player).Value = 0
@@ -153,8 +172,6 @@ function Game.update()
                 if ok and matchId == preparingMatch then pendingSpawn[player] = nil end
             end)
         end
-        deadline = now + Config.SpawnTimeoutSeconds
-        setPhase("Preparing")
     elseif phase == "Preparing" then
         local ready = true
         for _, player in Players:GetPlayers() do
@@ -175,6 +192,9 @@ function Game.update()
         elseif now >= deadline then finish("time limit") end
     elseif phase == "Intermission" and now >= deadline then
         setPhase("Waiting")
+        for _, player in Players:GetPlayers() do
+            recordAction(player, "WesternPracticeEntered")
+        end
     end
     ReplicatedStorage.HighNoon:SetAttribute("Seconds", if phase == "Waiting" then 0 else math.max(0, math.ceil(deadline - now)))
 end
@@ -190,7 +210,7 @@ function Game.start()
     Players.PlayerAdded:Connect(addPlayer)
     Players.PlayerRemoving:Connect(function(player)
         scores[player], joined[player], matchesJoined[player], pendingSpawn[player] = nil, nil, nil, nil
-        steps[player] = nil
+        steps[player], practiceSteps[player] = nil, nil
         Combat.remove(player)
     end)
     for _, player in Players:GetPlayers() do addPlayer(player) end

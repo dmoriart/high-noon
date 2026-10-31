@@ -86,12 +86,13 @@ function Controller.start()
     local function updateMatch()
         local phase = shared:GetAttribute("Phase") or "Waiting"
         local seconds = shared:GetAttribute("Seconds") or 0
-        if phase ~= "Shootout" then stopReload() end
-        if phase == "Waiting" then status.Text = "Waiting for a second gunslinger • " .. Config.ScoreToWin .. " eliminations to win"
+        if phase ~= "Shootout" and phase ~= "Waiting" then stopReload() end
+        if phase == "Waiting" then status.Text = "PRACTICE • Hits " .. tostring(player:GetAttribute("PracticeHits") or 0) .. " • Shoot targets and reload • Waiting for a rival"
         elseif phase == "Preparing" then status.Text = "Preparing the shootout…"
         elseif phase == "Intermission" then status.Text = (shared:GetAttribute("Result") or "Round over") .. " • Next shootout in " .. seconds
         else status.Text = "SHOOTOUT • " .. string.format("%d:%02d", math.floor(seconds / 60), seconds % 60) .. " • First to " .. Config.ScoreToWin end
     end
+    player:GetAttributeChangedSignal("PracticeHits"):Connect(updateMatch)
     shared.AttributeChanged:Connect(updateMatch)
     updateMatch()
 
@@ -151,12 +152,12 @@ function Controller.start()
         local tool = if character then character:FindFirstChildOfClass("Tool") else nil
         if not tool or not tool:GetAttribute("HighNoonWeapon") then return end
         local phase = shared:GetAttribute("Phase")
-        if phase ~= "Shootout" then
+        if phase ~= "Shootout" and phase ~= "Waiting" then
             message(if phase == "Intermission" then "Round over • Next shootout starts shortly" elseif phase == "Preparing" then "Preparing the shootout…" else "Waiting for another gunslinger")
             return
         end
         if player:GetAttribute("Reloading") then return end
-        if action == "Fire" and (player:GetAttribute("Ammo") or 0) <= 0 then message("Reload your revolver • R / X"); return end
+        if action == "Fire" and (player:GetAttribute("Ammo") or 0) <= 0 then message("Reload your revolver • R / X / Reload"); return end
         local camera = workspace.CurrentCamera
         if not camera then return end
         if action == "Fire" then
@@ -271,7 +272,7 @@ function Controller.start()
             weaponPresentation.fire(a, b)
             hooks:Fire("Fire", a)
         elseif action == "Reload" then
-            if shared:GetAttribute("Phase") ~= "Shootout" then return end
+            if shared:GetAttribute("Phase") ~= "Shootout" and shared:GetAttribute("Phase") ~= "Waiting" then return end
             local character = player.Character
             if not character or not character:FindFirstChildOfClass("Tool") then return end
             stopReload()

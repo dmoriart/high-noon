@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.HighNoon.Config)
 local Ballistics = require(ReplicatedStorage.HighNoon.Ballistics)
+local Practice = require(script.Parent.Practice)
 local Combat = {}
 
 type State = {character: Model, ammo: number, reloadUntil: number, lastShot: number, lastRequest: number, lastId: number, reloadId: number, reloadConnection: RBXScriptConnection?}
@@ -11,6 +12,7 @@ local remote: RemoteEvent
 local onKill: (Player, Player) -> ()
 local onAction: (Player, string) -> ()
 local active = false
+local practicing = false
 
 local function publish(player: Player, state: State)
     player:SetAttribute("Ammo", state.ammo)
@@ -39,6 +41,10 @@ function Combat.setActive(value: boolean)
             publish(player, state)
         end
     end
+end
+
+function Combat.setPractice(value: boolean)
+    practicing = value
 end
 
 function Combat.remove(player: Player)
@@ -84,7 +90,7 @@ function Combat.request(player: Player, action: any, requestId: any, origin: any
             end
             state.ammo = Config.Magazine
             publish(player, state)
-            onAction(player, "WesternFirstReload")
+            onAction(player, if practicing then "WesternPracticeFirstReload" else "WesternFirstReload")
         end)
         return "reload started"
     end
@@ -107,7 +113,10 @@ function Combat.request(player: Player, action: any, requestId: any, origin: any
     local result = workspace:Raycast(origin, direction * Config.Range, params)
     local endPosition = if result then result.Position else origin + direction * Config.Range
     local hit = false
-    if result then
+    if result and practicing then
+        hit = Practice.hit(result.Instance, player)
+        if hit then onAction(player, "WesternPracticeFirstHit") end
+    elseif result then
         local model = result.Instance:FindFirstAncestorOfClass("Model")
         local victim = if model then Players:GetPlayerFromCharacter(model) else nil
         local target = if model then model:FindFirstChildOfClass("Humanoid") else nil
@@ -122,7 +131,7 @@ function Combat.request(player: Player, action: any, requestId: any, origin: any
     end
     remote:FireAllClients("Shot", player, head.Position, endPosition)
     remote:FireClient(player, "Fired", hit)
-    onAction(player, "WesternFirstShot")
+    onAction(player, if practicing then "WesternPracticeFirstShot" else "WesternFirstShot")
     return "fired"
 end
 

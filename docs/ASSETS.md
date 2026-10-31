@@ -38,3 +38,9 @@ The coloured desert mesas already present in the Studio place were preserved; th
 | QA weapon, crate and invalid-import fixtures | AI-generated greybox | Luau primitive Parts | 2026-10-30 | Temporary test models, removed by tests; not shipped art |
 
 Revolver, Storefront16, Saloon20, Crate and Barrel model slots, Fire/Reload animation slots and optional sound slots are blank. Josh has not supplied assets in this session; add individual provenance rows when his work is imported. No final art was generated or existing art replaced.
+
+## Waiting range — 2026-10-31
+
+| Asset | Creator | Tools | Date | Status |
+| --- | --- | --- | --- | --- |
+| PLACEHOLDER_PracticeRange and three practice target boards | AI-generated greybox | Luau Parts / Roblox built-in font | 2026-10-31 | NeedsArt; optional PracticeTarget slot, no final art generated |

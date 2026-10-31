@@ -102,7 +102,7 @@ end
 prop("FrontierFence", CFrame.new(), fence)
 
 return {
-    Models = {Revolver = "", Storefront16 = "", Saloon20 = "", Crate = "", Barrel = ""} :: {[string]: string},
+    Models = {PracticeTarget = "", Revolver = "", Storefront16 = "", Saloon20 = "", Crate = "", Barrel = ""} :: {[string]: string},
     Animations = {Fire = "", Reload = ""} :: {[string]: string},
     Sounds = {
         Fire = {Id = "", Volume = 0.6},
@@ -111,6 +111,12 @@ return {
     } :: {[string]: {Id: string, Volume: number}},
     AudioMaxDistance = 120,
     AudioCleanupSeconds = 10,
+    Practice = {
+        Spawn = CFrame.lookAt(Vector3.new(50, 5, -48), Vector3.new(50, 5, -65)),
+        Targets = {Vector3.new(44, 4, -65), Vector3.new(50, 4, -65), Vector3.new(56, 4, -65)},
+        TargetSize = Vector3.new(3, 4, 0.5),
+        TargetCanvas = Vector2.new(240, 320),
+    },
     ToolHandleSize = Vector3.new(0.2, 0.2, 0.2),
     Grey = Color3.fromRGB(132, 132, 132),
     SceneryGrey = Color3.fromRGB(180, 180, 180),
