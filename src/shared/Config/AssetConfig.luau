@@ -102,10 +102,10 @@ end
 prop("FrontierFence", CFrame.new(), fence)
 
 return {
-    Models = {PracticeTarget = "", Revolver = "", Storefront16 = "", Saloon20 = "", Crate = "", Barrel = ""} :: {[string]: string},
+    Models = {PracticeTarget = "", Revolver = "Revolver", Storefront16 = "", Saloon20 = "", Crate = "", Barrel = ""} :: {[string]: string},
     Animations = {Fire = "", Reload = ""} :: {[string]: string},
     Sounds = {
-        Fire = {Id = "", Volume = 0.6},
+        Fire = {Id = "rbxassetid://120771468205926", Volume = 0.6},
         Reload = {Id = "", Volume = 0.4},
         Hit = {Id = "", Volume = 0.4},
     } :: {[string]: {Id: string, Volume: number}},
@@ -122,7 +122,8 @@ return {
     SceneryGrey = Color3.fromRGB(180, 180, 180),
     Ground = Color3.fromRGB(190, 190, 190),
     ViewmodelOffset = CFrame.new(0.55, -0.6, -1.5),
-    ViewmodelScale = 0.65,
+    RevolverScale = 4.5,
+    ViewmodelScale = 0.85,
     Revolver = {
         {Name = "Handle", Size = Vector3.new(0.3, 0.8, 0.4), Offset = CFrame.new()},
         {Name = "Barrel", Size = Vector3.new(0.2, 0.2, 1.2), Offset = CFrame.new(0, 0.4, -0.65)},

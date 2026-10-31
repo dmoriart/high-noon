@@ -11,3 +11,4 @@
 - 2026-10-30: Playtesting found mouse-tool activation unreliable and touch Fire overlapping Jump. Bind mouse firing explicitly with GUI/chat guards and a shared debounce; check accepted server ammo changes, and position touch buttons after Roblox creates them. A tool reporting input success is not proof that the game received it.
 
 - 2026-10-31: The first practice playtest spawned the player back at an old location after PivotTo; Roblox’s later spawn placement overrode it. Move the existing SpawnLocations for Waiting and restore them before loading match characters; verify the final position in a real client.
+- 2026-10-31: Des reported a tiny silent imported revolver; inspection found a 0.4-stud StarterPack tool outside the art slot and a blank runtime Fire sound. Integrate visual copies through AssetConfig, check import units, use relative camera scaling, and verify the configured shot sound instead of assuming an imported Tool is the active game weapon.

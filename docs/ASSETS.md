@@ -44,3 +44,12 @@ Revolver, Storefront16, Saloon20, Crate and Barrel model slots, Fire/Reload anim
 | Asset | Creator | Tools | Date | Status |
 | --- | --- | --- | --- | --- |
 | PLACEHOLDER_PracticeRange and three practice target boards | AI-generated greybox | Luau Parts / Roblox built-in font | 2026-10-31 | NeedsArt; optional PracticeTarget slot, no final art generated |
+
+## Imported revolver integration — 2026-10-31
+
+| Asset | Creator | Tools | Date | Status |
+| --- | --- | --- | --- | --- |
+| Revolver visual (Handle, frame_geom, barrel_geom) | User-supplied; original creator not yet confirmed | Imported Roblox MeshParts; visual-only rbxmx copy | 2026-10-31 | src/shared/Art/Revolver.rbxmx; original tool preserved under ServerStorage.ImportedArtSources.Revolver |
+| Gunshot audio 120771468205926 | User-supplied asset reference; original creator/licence not yet confirmed | Existing imported Tool Sound / AssetConfig | 2026-10-31 | Configured firing audio; Studio loading checked, published-server permission still to verify |
+
+The Revolver model and Fire sound slots are now configured. Original mesh dimensions/textures are preserved; runtime clones scale by 4.5 for the held gun, then 0.85 relatively for the camera view. No replacement artwork was generated. The original tool's standalone combat scripts remain archived rather than running alongside the game's combat system.

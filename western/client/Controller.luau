@@ -201,7 +201,7 @@ function Controller.start()
     local healthConnection: RBXScriptConnection? = nil
     local viewmodel = Art.weapon(true)
     if not viewmodel:GetAttribute("SourceArt") then viewmodel.Name = "PLACEHOLDER_RevolverViewmodel" end
-    viewmodel:ScaleTo(Assets.ViewmodelScale)
+    viewmodel:ScaleTo(viewmodel:GetScale() * Assets.ViewmodelScale)
     local weaponPresentation = Presentation.new(viewmodel)
     presentation = weaponPresentation
     local visible = false
@@ -247,6 +247,11 @@ function Controller.start()
         local function equipped(child: Instance)
             if child:IsA("Tool") and child:GetAttribute("HighNoonWeapon") and not child:GetAttribute("ClientBound") then
                 child:SetAttribute("ClientBound", true)
+                local function hideHeldPart(object: Instance)
+                    if object:IsA("BasePart") then object.LocalTransparencyModifier = 1 end
+                end
+                for _, object in child:GetDescendants() do hideHeldPart(object) end
+                child.DescendantAdded:Connect(hideHeldPart)
                 child.Activated:Connect(function() request("Fire") end)
                 child.Unequipped:Connect(stopReload)
             end
