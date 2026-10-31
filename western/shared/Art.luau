@@ -38,6 +38,7 @@ end
 
 function Art.weapon(anchoredRoot: boolean): Model
     local model = Art.clone("Revolver")
+    if model then model:ScaleTo(model:GetScale() * Assets.RevolverScale) end
     if not model then
         model = Instance.new("Model")
         model.Name = "PLACEHOLDER_RevolverVisual"

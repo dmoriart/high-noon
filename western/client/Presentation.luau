@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
 local Debris = game:GetService("Debris")
+local ContentProvider = game:GetService("ContentProvider")
 local Assets = require(game:GetService("ReplicatedStorage").Config.AssetConfig)
 local Presentation = {}
 export type WeaponPresentation = {
@@ -11,6 +12,25 @@ export type WeaponPresentation = {
 function Presentation.new(model: Model): WeaponPresentation
     local tracks: {[string]: AnimationTrack} = {}
     local reloadSound: Sound? = nil
+    task.spawn(function()
+        local clips: {Sound} = {}
+        for _, options in Assets.Sounds do
+            if options.Id ~= "" then
+                local clip = Instance.new("Sound")
+                clip.Name, clip.SoundId = "HighNoonAudioPreload", options.Id
+                clip.Parent = SoundService
+                table.insert(clips, clip)
+            end
+        end
+        if #clips == 0 then return end
+        local ok, reason = pcall(function()
+            ContentProvider:PreloadAsync(clips, function(id: string, status: Enum.AssetFetchStatus)
+                if status ~= Enum.AssetFetchStatus.Success then warn("Weapon audio could not load:", id, status.Name) end
+            end)
+        end)
+        for _, clip in clips do clip:Destroy() end
+        if not ok then warn("Weapon audio preload failed:", reason) end
+    end)
     local function track(name: string): AnimationTrack?
         local id = Assets.Animations[name]
         if id == "" then return nil end
