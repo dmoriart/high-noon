@@ -1,4 +1,7 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
+local Tables = require(Framework.Module.lib.fc_tables)
 
 local Commands = {}
 
@@ -8,7 +11,7 @@ Commands.Help = {
 	
 	Function = function(self)
 		for i, v in pairs(self.Commands) do
-			self:Print(string.lower(i) .. ": " .. v.Description or "Command")
+			self:Print(string.lower(i) .. ": " .. (v.Description or "Command"))
 		end
 	end,
 }
@@ -31,7 +34,6 @@ Commands.Close = {
 	end,
 }
 
--- Made for Evostrike
 Commands.Stats = {
 	Description = "Show FPS and Velocity",
 	Public = true,
@@ -41,5 +43,9 @@ Commands.Stats = {
 		statsGui.Enabled = not statsGui.Enabled
 	end,
 }
+
+-- [[ PARSED PREFIX COMMANDS ]]
+Commands = Tables.combine(Commands, require(script.Parent:WaitForChild("Viewmodel")))
+Commands = Tables.combine(Commands, require(script.Parent:WaitForChild("Crosshair")))
 
 return Commands

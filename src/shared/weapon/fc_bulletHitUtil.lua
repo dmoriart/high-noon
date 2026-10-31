@@ -1,11 +1,14 @@
 -- [[ Purpose: organize sharedWeaponFunctions, bulletHit particles and sounds ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
 local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
 local EmitParticle = require(Framework.shfc_emitparticle.Location)
 local GlobalSounds = ReplicatedStorage.Services.WeaponService.ServiceAssets.Sounds
 local Particles = ReplicatedStorage.Services.WeaponService.ServiceAssets.Emitters
+local PlayerAttributes = require(Framework.Module.PlayerAttributes)
 
 local util = {}
 
@@ -70,15 +73,21 @@ function util.PlayerHitSounds(character, hitPartInstance, wasKilled) -- Player H
         soundFolder = GlobalSounds.PlayerHit.Bodyshot
     end
 
+    local testParent = RunService:IsClient() and game.Players.LocalPlayer.Character or character
     task.spawn(function()
-        _PlayAllSoundsIn(soundFolder, character, ignore)
+        --_PlayAllSoundsIn(soundFolder, character, ignore)
+        _PlayAllSoundsIn(soundFolder, testParent, ignore)
     end)
 end
 
 function util.PlayerHitParticles(character, hitPartInstance, wasKilled)
+    local player = Players:GetPlayerFromCharacter(character) or {Name = "BOT_" .. character.Name}
+    local helmet = PlayerAttributes:GetCharacterAttribute(player, "Helmet")
+    local helmetBroken = PlayerAttributes:GetCharacterAttribute(player, "HelmetBrokenParticles")
 
     if not wasKilled then
-        local lrh = character:GetAttribute("LastRegisteredHealth")
+        local lrh = PlayerAttributes:GetAttribute(player, "LastRegisteredHealth")
+        --local lrh = character:GetAttribute("LastRegisteredHealth")
         wasKilled = (lrh and lrh <= 0)
     end
 
@@ -89,8 +98,8 @@ function util.PlayerHitParticles(character, hitPartInstance, wasKilled)
 
     -- hit body/head particles
     local particleFolder
-    if string.match(string.lower(hitPartInstance.Name), "head") then
-        if character:GetAttribute("HelmetBroken") then
+    if string.find(string.lower(hitPartInstance.Name), "head") then
+        if helmet or helmetBroken then
             particleFolder = Particles.Blood.Headshot.Helmet
         else
             particleFolder = Particles.Blood.Headshot.NoHelmet

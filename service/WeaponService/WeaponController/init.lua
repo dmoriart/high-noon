@@ -26,10 +26,13 @@ local UIState = require(Framework.Module.States):Get("UI")
 local Weapon = require(game:GetService("ReplicatedStorage").Services.WeaponService.Weapon)
 local VMSprings = require(Framework.Module.lib.c_vmsprings)
 local Tables = require(Framework.Module.lib.fc_tables)
+local ReplenishClient = Framework.Service.WeaponService.Events.ReplenishClient
 
 --[[ CONFIGURATION ]]
 local ForceEquipDelay = 0.9
 local EquipInputDebounce = 0.04
+local TurnWeaponVisibleLength = 0.1
+
 local NeededKeybindKeys = {"primaryWeapon", "secondaryWeapon", "ternaryWeapon", "bombWeapon", "inspect", "drop", "equipLastEquippedWeapon", "aimToggle"}
 local util_vmParts = {"LeftLowerArm", "LeftUpperArm", "RightUpperArm", "RightLowerArm"}
 
@@ -61,6 +64,7 @@ function WeaponController.new()
     self.CurrentController = nil
     self.MovementCommunicate = require(self.Owner.Character:WaitForChild("MovementScript"):WaitForChild("Communicate"))
     self.GroundMaxSpeed = self.MovementCommunicate.GetVar("groundMaxSpeed")
+    self.EquipVariables = {currentEquippedSlot = false, processingWeaponTransparency = false, nextVisibleTime = false}
 
     util_initKeybinds(self)
 
@@ -81,24 +85,20 @@ function WeaponController.new()
             end
         elseif action == "ClearInventory" then
             for i, v in pairs(self.Inventory) do
-                if v then v:Remove() end
-                self.Inventory[i] = false
+                self:ClearInventory()
+                --if v then v:Remove() end
+                --self.Inventory[i] = false
             end
         end
     end)
 
     -- this is where we will do bomb observe update
-    self.Connections.Update = RunService.RenderStepped:Connect(function(dt)
-        -- is player looking at bomb?
-        -- can player defuse bomb?
+    self.Connections.Update = RunService.RenderStepped:Connect(function(dt) self._currDT = dt self:Update(dt) end)
 
-        -- update equip spring
-        for _, v in pairs(self.Inventory) do
-            if v and v.EquipSpring then
-                local pos = v.EquipSpring:update(dt)
-                workspace.CurrentCamera.CFrame *= CFrame.Angles(math.rad(pos.X), math.rad(pos.Y), math.rad(pos.Z))
-            end
-        end
+    self.Connections.ReplenishClient = ReplenishClient.OnClientEvent:Connect(function()
+        self:DoInInventory(function(_, v)
+            v:Replenish()
+        end)
     end)
 
     return self
@@ -120,6 +120,27 @@ function WeaponController:Remove()
     self = nil
 end
 
+function WeaponController:Update(dt)
+    -- is player looking at bomb?
+    -- can player defuse bomb?
+
+    -- update equip transparency
+    if self.EquipVariables.processingWeaponTransparency then
+        if tick() >= self.EquipVariables.nextVisibleTime then
+            self.EquipVariables.processingWeaponTransparency = false
+            util_processEquipTransparency(self, self.Inventory[self.EquipVariables.currentEquippedSlot])
+        end
+    end
+
+    -- update equip spring
+    for _, v in pairs(self.Inventory) do
+        if v and v.EquipSpring then
+            local pos = v.EquipSpring:update(dt)
+            workspace.CurrentCamera.CFrame *= CFrame.Angles(math.rad(pos.X), math.rad(pos.Y), math.rad(pos.Z))
+        end
+    end
+end
+
 --
 
 --@summary Add a Weapon to the Controller (must have been created on the server first)
@@ -137,9 +158,11 @@ function WeaponController:AddWeapon(weapon: string, tool: Tool, forceEquip: bool
     wepObject.EquipSpring = equipSpring
 
     local function shoveEquip()
-        local dt = wepObject._stepDT
+        --local dt = wepObject._stepDT -- stepdt is the same for everybody no matter the fps. woops.
+        local dt = self._currDT
         equipSpring:shove(shoveVec*dt*60)
-        task.wait((1/60)*(dt/(1/60))*2)
+        --task.wait((1/60)*(dt/(1/60))*2) -- how long are we waiting for exactly, wtf?
+        task.wait((1/60) * 2)
         equipSpring:shove(-shoveVec*dt*60)
     end
     shoveEquip = wepObject.Options.equipSpringShoveFunction or shoveEquip
@@ -177,10 +200,15 @@ end
 function WeaponController:EquipWeapon(weaponSlot, bruteForce)
     if not self.Owner.Character or not self.Owner.Character.Humanoid or self.Owner.Character.Humanoid.Health <= 0 then return end
     if not self:IsWeaponInSlot(weaponSlot) then return end
+
     if not bruteForce then
         if self:IsWeaponEquipped(weaponSlot) then return end
         if self.InitialWeaponAddDebounce then return end
     end
+
+    self.EquipVariables.currentEquippedSlot = weaponSlot
+    self.EquipVariables.nextVisibleTime = tick() + TurnWeaponVisibleLength
+    self.EquipVariables.processingWeaponTransparency = true
 
     -- turn the weapon invisible, fix glitchy equip
     util_processUnequipTransparency(self, self.Inventory[weaponSlot])
@@ -215,9 +243,9 @@ function WeaponController:EquipWeapon(weaponSlot, bruteForce)
 
     -- turn the weapon visible again!
     if self.Inventory.equipped and self.Inventory.equipped.ClientModel then
-        task.delay(0.06, function()
+        --[[task.delay(0.06, function()
             util_processEquipTransparency(self, self.Inventory[weaponSlot])
-        end)
+        end)]]
     end
 
     self.InitialWeaponAddDebounce = false
@@ -227,7 +255,10 @@ end
 function WeaponController:UnequipWeapon(weaponSlot)
     if not self.Owner.Character or not self.Owner.Character.Humanoid or self.Owner.Character.Humanoid.Health <= 0 then return end
 
+    --self.EquipVariables.processingWeaponTransparency = false
+
     --util_processUnequipTransparency(self, self.Inventory[weaponSlot])
+    self.Inventory[weaponSlot]:DisconnectUpdate()
     self.Inventory[weaponSlot]:DisconnectActions()
     self.Inventory[weaponSlot]:Unequip()
 
@@ -251,11 +282,22 @@ function WeaponController:IsWeaponInSlot(weaponSlot)
     return self.Inventory[weaponSlot] and true or false
 end
 
+function WeaponController:DoInInventory(cb) -- cb = (slot, weapon) -> ()
+    for _, i in pairs({"primary", "secondary", "ternary"}) do
+        if self.Inventory[i] then
+            cb(i, self.Inventory[i])
+        end
+    end
+end
+
 --@summary Remove all Weapons from the Controller
 function WeaponController:ClearInventory()
-    for _, v in pairs(self.Inventory) do
+    self:DoInInventory(function(_, v)
         if v then v:Remove() end
-    end
+    end)
+    --[[for _, v in pairs(self.Inventory) do
+        
+    end]]
 end
 
 -- Weapon Action Processing

@@ -23,8 +23,8 @@ local wepconfig = {
 		
 		accuracy = {
 			firstBullet = 4.7,
-			base = 37,
-			crouch = 40,
+			base = 35,
+			crouch = 33,
 			spray = 2,
 			walk = 170,
 			run = 170,
@@ -38,8 +38,9 @@ local wepconfig = {
 
 			headMultiplier = 3.3,
 			legMultiplier = 0.9,
-			damageFalloffPerMeter = 1,
-			damageFalloffDistance = 24,
+			damageFalloffPerMeter = 0.4,
+			damageFalloffDistance = 29,
+			damageFalloffMinimumDamage = 33,
 			enableHeadFalloff = false,
 			headFalloffMultiplier = 0.6, -- Multiplier applied to damage falloff per meter
 			

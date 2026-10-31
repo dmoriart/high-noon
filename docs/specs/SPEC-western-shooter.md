@@ -1,0 +1,69 @@
+# High Noon — Western multiplayer shooter proposal
+
+Date: 2026-10-30
+Status: Des requested implementation of the first Western game on 2026-10-30; milestone 2 implemented for review and Studio validation.
+
+## Direction
+
+An original cowboy multiplayer shooter inspired by the atmosphere of cinematic Westerns: dusty streets, timber buildings, frontier clothing and deliberate gunfights. Red Dead Redemption is a mood reference; use original names, maps, characters, music and art.
+
+We believe Roblox shooter players will play a second Western shootout because deliberate gunplay and a readable frontier arena make each encounter satisfying. We'll know if at least 50% of participants in a ten-player playtest voluntarily play a second match.
+
+## Milestone 1: identity and inherited-project audit
+
+- Choose the game title and rename the GitHub fork and Rojo project.
+- Replace the repository introduction with the new direction while preserving upstream credits and GPL licence.
+- Record missing Studio dependencies and the proposed gameplay milestone.
+- Leave inherited gameplay untouched until its baseline can be tested.
+
+Acceptance checks: repository URL and project title agree; project JSON parses and all mapped source paths exist; licence and upstream credits remain; changes contain no new assets or purchases.
+
+This milestone changes project identity and documentation only. Gameplay analytics begin with milestone 2, when a match loop exists to measure.
+
+## Milestone 2: first playable shootout
+
+Proposed scope: one small greybox frontier street, two-player free-for-all, one revolver, respawn, a visible score and a clear match result. Des requested building this Western foundation on 2026-10-30. Retain first-person controls initially; third-person aiming is a separate product choice.
+
+1. Recover or replace required Studio dependencies and verify the inherited baseline.
+2. Audit server validation for firing, damage and respawns before adapting the weapon.
+3. Implement the smallest shootout using feature config for tuning and `src/shared/Config/AssetConfig.luau` for art references.
+4. Use grey `PLACEHOLDER_<Thing>` parts tagged `NeedsArt` for missing art.
+5. Record server-side AnalyticsService events for match joined, match completed and second match joined, once per player per match; no extra personal data.
+6. Run Play Solo and a two-player local server: join, fire, damage, death, respawn, score, result, replay and leaving mid-match. Check server output for errors.
+
+Do not expand into horses, open-world missions, progression or purchases during this milestone. Inherited cases and shop systems require a separate review before publication.
+
+## Known baseline dependencies
+
+- `src/replicatedfirst/BeginningSequence/init.client.lua` waits for `LoadingGUI`, `Intro` and `Workspace.Map`; the repository does not include the corresponding full scene and interface.
+- `src/server/FrameworkScript.server.lua` expects `ServerStorage.Stored.MapIDs` and includes teleports to configured places. New Roblox places and ownership must be established before testing travel.
+- Asset folders under `src/shared/Assets` include metadata; this is not proof that all required models, animations and interfaces are supplied.
+- The inherited source was built and playtested; it fails on missing UI/save modules and outdated avatar constraints. The default Western runtime replaces those entry points; the full upstream mapping remains in evostrike.project.json.
+
+## Implemented scope
+
+Default project mapping runs a self-contained Western prototype. Original Evostrike files remain preserved; walking/jump tuning and the damage/falloff approach are reused. This does not claim the full Source movement controller is ported. The original weapon remotes accepted client hit information, so new damage uses server raycasts with state, ammo, range, rate, origin and request ID validation.
+
+Players wait for at least two gunslingers, prepare fresh characters, play a three-minute or ten-elimination round, see a result and restart after ten seconds. Preparation has a timeout and retries from waiting. Leaving below two players ends the match. Equal positive scores produce a draw; all-zero scores produce no winner. Respawns take three seconds with two seconds of protection, lost on firing. Revolvers have unlimited reserve ammunition to keep this first playtest focused on combat.
+
+Live analytics events: WesternMatchJoined, WesternMatchCompleted, WesternSecondMatchJoined. Studio logs the same event names without sending live analytics. These measure session retention into a second round, not confirmed player attention. No persistence or purchases are added.
+
+## Shootout reliability pass — 2026-10-30
+
+Des requested testing and improvements. Keep this pass within the existing shootout: align the crosshair with the camera ray and cancel a reload immediately when the weapon is unequipped. No new art or gameplay mode is required.
+
+We believe first-time players will trust aiming and reload feedback because the marker matches the shot and interrupted reloads require a fresh reload. We'll know if all aim-alignment and reload-interruption regression checks pass, alongside the existing two-player combat and lifecycle suites. Player replay retention remains the product metric already instrumented above; these are correctness fixes rather than a new funnel.
+
+Checks before implementation: reproduce the crosshair/camera-center offset in Studio; reproduce ammo refilling after unequipping and re-equipping during a reload. After implementation: crosshair center matches the camera viewport center, including after resizing; unequip cancels the reload immediately; its delayed callback cannot refill a later reload; a fresh reload still completes; existing combat and match lifecycle tests pass. Preserve all art and original source.
+
+Phone simulation also exposed the desktop HUD overlapping touch-control areas. This pass adds a compact layout on short or narrow viewports: health/ammo move below the match header, own score stays in the title, and the large scoreboard/control legend are hidden. Check both layout modes and score updates after resizing.
+
+## Western arena style pass — 2026-10-30
+
+Des requested a Western style for the game area. Build a labelled greybox frontier town: wood-textured storefront shapes with false fronts, open doorways, porch railings, boardwalks, a water tower, a wagon, barrels and hitching rails. Replace the plain-looking perimeter with a canyon silhouette and use warm late-afternoon lighting and restrained haze. These are AI-generated blockout assets for Josh to replace, not final art. Leave weapon tuning, spawns and the central shooting lane unchanged.
+
+We believe first-time players will recognise the arena as a Western town because its buildings, props and lighting communicate the setting together. We'll know if four of five playtesters identify it as a Western town from a screenshot without seeing the title. Existing match retention analytics remain the gameplay metric; this visual pass adds no new interaction funnel.
+
+Acceptance checks: all new scenery is tagged NeedsArt and labelled PLACEHOLDER_; art definitions stay in AssetConfig; no JoshArt is changed; every spawn has room for a character; the main shooting lane stays clear; ground/cover still block bullets; Solo starts without game-script errors; inspect street-level and overhead screenshots; attempt a two-player local join/combat check and report any launcher limitations. Keep the scene below 400 primitive parts and add no per-frame scenery loops or external asset IDs.
+
+The style pass uses a visible frontier fence around the unchanged collision bounds and moves rock silhouettes beyond the playable perimeter. A marked editor-only preview may be rebuilt at startup; replacement refuses any JoshArt or untagged parts. This keeps a saved reference view from breaking Play without deleting protected art.

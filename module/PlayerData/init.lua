@@ -8,7 +8,7 @@ end
 
 local DataStore2 = require(script:WaitForChild("DataStore2"))
 local Strings = require(script:WaitForChild("Strings"))
-local Default = require(script:WaitForChild("Shared"))
+local Shared = require(script:WaitForChild("Shared"))
 local RemoteFunction = script:WaitForChild("Events").RemoteFunction
 local RemoteEvent = script.Events.RemoteEvent
 local Admins = require(game:GetService("ServerStorage"):WaitForChild("Stored").AdminIDs)
@@ -16,7 +16,7 @@ local Overrides = require(script:WaitForChild("Overrides"))
 
 local PlayerData = {}
 PlayerData._storecache = {}
-PlayerData._def, PlayerData._defOpt = Default.def, Default.defVar
+PlayerData._def, PlayerData._defOpt = Shared.def, Shared.defVar
 
 --@summary Get PlayerData
 function PlayerData:Get(player: Player)
@@ -135,6 +135,14 @@ function PlayerData:ClearPlayerCache(player)
     PlayerData._storecache[player.Name] = nil
 end
 
+--@summary Set an Option Value, enforcing limits and type restrictions.
+function PlayerData:SetOptionValue(player, optionKey, valueKey, value)
+    if not Shared:VerifyNewOptionValue(optionKey, valueKey, value) then
+        return false, "Option value not verified."
+    end
+    return PlayerData:SetPath(player, "options." .. optionKey .. "." .. valueKey, value)
+end
+
 --@private
 --[[Private Module Functions]]
 function _serverInvoke(player, action, ...)
@@ -188,10 +196,17 @@ end
 --@summary Overrides unvalidated data with what was previously stored.
 function _validateIncoming(player, new)
     local _rep = false
-    for i, _ in pairs(new) do
-        if PlayerData._defOpt[i] then
+    for i, v in pairs(new) do
+        if PlayerData._defOpt[i] and PlayerData._defOpt[i].clientReadOnly then
             _rep = PlayerData:GetKey(player, i)
-            new[i] = _hardCopy(_rep)
+            
+            for a, b in pairs(v) do
+                if _rep[a] ~= b then
+                    new[i] = _hardCopy(_rep)
+                    warn("Could not validate playerdata key '" .. tostring(i) .. "' ... overriding with default value.")
+                    break
+                end
+            end
         end
     end
 end

@@ -21,7 +21,6 @@ local SmokeGrenade = {
 
         -- grenade
         grenadeThrowDelay = 0.36,
-        acceleration = 10,
         speed = 150,
         gravityModifier = 0.5,
         startHeight = 2,

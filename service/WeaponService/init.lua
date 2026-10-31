@@ -60,6 +60,8 @@ function WeaponService:AddWeapon(player: Player, weapon: string, forceEquip: boo
         return false
     end
 
+    print('Adding weapon ' .. weapon)
+
     -- server inventory management
     local weaponSlot = require(weaponModule).Configuration.inventorySlot
     if WeaponService:GetPlayerInventorySlot(player, weaponSlot) then
@@ -134,8 +136,11 @@ end
 
 function WeaponService:GetRegisteredWeapons()
 	local wep = {}
-	for i, v in pairs(Weapons:GetChildren()) do
-		if v:GetAttribute("Ignore") then continue end
+	for _, v in pairs(Weapons:GetChildren()) do
+		if v:GetAttribute("Ignore")
+        or string.match(v.Name, "_") then
+            continue
+        end
 		table.insert(wep, v.Name)
 	end
 	return wep
@@ -143,7 +148,7 @@ end
 
 function WeaponService:GetRegisteredKnives()
     local wep = {}
-    for i, v in pairs(Weapons.knife.Assets:GetChildren()) do
+    for _, v in pairs(Weapons.knife.Assets:GetChildren()) do
         table.insert(wep, v.Name)
     end
     return wep

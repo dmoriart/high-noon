@@ -26,10 +26,18 @@ function WeaponTool.new(player: Player, weaponModule: ModuleScript)
 	local invSkin, skinData = InventoryInterface2.GetEquippedSkin(player, string.lower(weaponName))
 	model = InventoryInterface2.GetSkinModelFromSkinObject(invSkin)
 
+	if skinData and skinData.Seed then
+		-- apply seed modifiers if necessary
+		local SkinsDatabase = require(game:GetService("ServerStorage"):WaitForChild("SkinsDatabase"))
+		SkinsDatabase:ApplySkinSeedModifiers(invSkin, skinData.Seed, model)
+	end
+	
+
 	-- set collision groups
 	for _, v in pairs(model:GetDescendants()) do
 		if not v:IsA("MeshPart") and not v:IsA("BasePart") then continue end
 		v.CollisionGroup = "Weapons"
+		v.Massless = true
 	end
 	
 	-- init server and client model
@@ -44,6 +52,13 @@ function WeaponTool.new(player: Player, weaponModule: ModuleScript)
 
 	if model:FindFirstChild("Inventory") then
 		model.Inventory:Destroy()
+	end
+
+	-- Disable shadows on client model
+	for _, v in pairs(clientModel:GetDescendants()) do
+		if v:IsA("Part") or v:IsA("MeshPart") then
+			v.CastShadow = false
+		end
 	end
 
 	serverModel.Name = "ServerModel"
@@ -86,6 +101,9 @@ function WeaponTool.new(player: Player, weaponModule: ModuleScript)
 	local weaponServerEquippedEvent = Instance.new("RemoteEvent")
 	weaponServerEquippedEvent.Name = "WeaponServerEquippedEvent"
 	weaponServerEquippedEvent.Parent = tool
+	local weaponServerReloadedEvent = Instance.new("RemoteEvent")
+	weaponServerReloadedEvent.Name = "WeaponServerReloadedEvent"
+	weaponServerReloadedEvent.Parent = tool
 	
 	local PlayerObject = Instance.new("ObjectValue")
 	PlayerObject.Name = "PlayerObject"

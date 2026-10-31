@@ -6,25 +6,21 @@
 --[[ CONFIG ]]
 local DISABLE_CHAT_RETRIES = 5
 local MENU_OPEN_WITH_HOMEPAGE = true
-
-local TOPBAR_BUTTON_DEFAULT_COLOR = Color3.fromRGB(23, 29, 38)
-local TOPBAR_BUTTON_ACTIVE_COLOR = Color3.fromRGB(95, 120, 157)
-
+local TOPBAR_BUTTON_ACTIVE_COLOR = Color3.fromRGB(57, 120, 125)
+local TOPBAR_BUTTON_DEFAULT_COLOR = Color3.fromRGB(235, 241, 255)
 local TOPBAR_BUTTON_OPEN_FADEIN_LENGTH = .8
 local TOPBAR_BAR_OPEN_LENGTH = .8
-
 local TOPBAR_BUTTON_CLOSE_FADEOUT_LENGTH = .6
 local TOPBAR_BAR_CLOSE_LENGTH = .7
-
 local TOPBAR_BUTTON_HOVER_FADEIN_LENGTH = 1
 local TOPBAR_BUTTON_HOVER_FADEOUT_LENGTH = 1
+--
 
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local AssetService = game:GetService("AssetService")
 local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
-local GamemodeService = require(Framework.Service.GamemodeService2)
+local GameService = require(Framework.Service.GameService)
 local States = require(Framework.Module.States)
 local UIState = States:Get("UI")
 local StarterGui = game:GetService("StarterGui")
@@ -54,20 +50,35 @@ local MainMenu = {
     Var = {},
     CurrentOpenPage = false,
     Gui = false,
-    CurrentMenuType = false
+    CurrentMenuType = false,
+    Popup = require(script:WaitForChild("Popup"))
 }
 
 -- Initialize Pages, Sounds and GamemodeService
 function MainMenu:Initialize(gui)
     self.Gui = gui
-    self.CurrentMenuType = GamemodeService:GetMenuType()
+    self.IsTopBarOpen = false
+    --self.CurrentMenuType = GamemodeService:GetMenuType()
+    self.CurrentMenuType = GameService:GetMenuType()
+    self.HUD = require(game.Players.LocalPlayer.PlayerScripts:WaitForChild("HUD"))
+    self.DisabledHUDs = {}
 
     initPages(self)
     initButtonSounds(self)
     initTopBar(self)
 
-    self.BaseConnections.MenuTypeChanged = GamemodeService:MenuTypeChanged(menuTypeChanged)
+    self.BaseConnections.MenuTypeChanged = GameService:MenuTypeChanged(menuTypeChanged)
     self.CurrentOpenPage = getPage("Home")
+
+    self.CurrentTopBarSelectedButton = "HomeButtonFrame"
+
+    self.BlurLightingEffect = Lighting:FindFirstChild("MainMenuBlur")
+    if not self.BlurLightingEffect then
+        self.BlurLightingEffect = Instance.new("BlurEffect", Lighting)
+        self.BlurLightingEffect.Enabled = false
+        self.BlurLightingEffect.Size = 54
+        self.BlurLightingEffect.Name = "MainMenuBlur"
+    end
 
     if self.CurrentMenuType == "Lobby" then
         self:Open()
@@ -77,14 +88,19 @@ end
 -- Open the Menu, Re-opens last open page
 function MainMenu:Open()
     self.Gui.Enabled = true
+
     if self.CurrentOpenPage then
         self.CurrentOpenPage:Open()
     end
+
     UIState:removeOpenUI("MainMenu")
 	UIState:addOpenUI("MainMenu", self.Gui, true)
     task.spawn(function()
+        disableHud(self)
         disableChat()
     end)
+
+    self.BlurLightingEffect.Enabled = true
 end
 
 -- Close the Menu, Closes current page and sets to last open
@@ -98,8 +114,11 @@ function MainMenu:Close()
     self.Gui.Enabled = false
     UIState:removeOpenUI("MainMenu")
     task.spawn(function()
+        enableHud(self)
         enableChat()
     end)
+
+    self.BlurLightingEffect.Enabled = false
 end
 
 -- Automatically Closes Current Page and Opens New One
@@ -108,6 +127,13 @@ function MainMenu:OpenPage(pageName)
     self:ClosePage()
     newPage:Open()
     self.CurrentOpenPage = newPage
+
+    local fn = pageName .. "ButtonFrame"
+    self.Tweens.TopBarHoverOn[self.CurrentTopBarSelectedButton]:Pause()
+    self.Tweens.TopBarHoverOff[self.CurrentTopBarSelectedButton]:Play()
+    self.CurrentTopBarSelectedButton = fn
+    self.Tweens.TopBarHoverOff[fn]:Pause()
+    self.Tweens.TopBarHoverOn[fn]:Play()
 end
 
 -- Closes the Currently Opened Page
@@ -132,11 +158,13 @@ function MainMenu.MenuType()
 end
 
 function MainMenu:OpenTopBar()
+    self.IsTopBarOpen = true
     openTopBarTween(self)
     connectTopBar(self)
 end
 
 function MainMenu:CloseTopBar()
+    self.IsTopBarOpen = false
     closeTopBarTween(self)
     disconnectTopBar(self)
 end
@@ -181,7 +209,7 @@ function initPages(self)
 end
 
 function initTopBar(self)
-    local tb = self.Gui.TopBar
+    local tb: Frame = self.Gui.TopBar
     self.Var.topBarDefSizeY = tb.Size.Y.Scale
 
     local tboti = TweenInfo.new(TOPBAR_BAR_OPEN_LENGTH, Enum.EasingStyle.Cubic)
@@ -206,13 +234,14 @@ function initTopBar(self)
         self.Tweens.TopBarOpen[v.Name .. "_Stroke"] = TweenService:Create(v.TextButton.UIStroke, tbbofiti, {Transparency = 0})
         self.Tweens.TopBarClose[v.Name] = TweenService:Create(v.TextButton, tbbofoti, {TextTransparency = 1})
         self.Tweens.TopBarClose[v.Name .. "_Stroke"] = TweenService:Create(v.TextButton.UIStroke, tbbofoti, {Transparency = 1})
-        self.Tweens.TopBarHoverOn[v.Name] = TweenService:Create(v.TextButton.UIStroke, tbbhiti, {Color = TOPBAR_BUTTON_ACTIVE_COLOR})
-		self.Tweens.TopBarHoverOff[v.Name] = TweenService:Create(v.TextButton.UIStroke, tbbhoti, {Color = TOPBAR_BUTTON_DEFAULT_COLOR})
+        self.Tweens.TopBarHoverOn[v.Name] = TweenService:Create(v.TextButton, tbbhiti, {TextColor3 = TOPBAR_BUTTON_ACTIVE_COLOR})
+		self.Tweens.TopBarHoverOff[v.Name] = TweenService:Create(v.TextButton, tbbhoti, {TextColor3 = TOPBAR_BUTTON_DEFAULT_COLOR})
         v.TextButton.UIStroke.Transparency = 1
         v.TextButton.TextTransparency = 1
     end
 
     tb.Size = UDim2.fromScale(1, 0)
+    tb.Visible = true
 end
 
 function connectTopBar(self)
@@ -222,11 +251,17 @@ function connectTopBar(self)
         end
         self.TopBarConnections[frame.Name .. "Began"] = frame.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseMovement then
+                if self.CurrentTopBarSelectedButton == frame.Name then
+                    return
+                end
                 hoverOnTopBarTween(self, frame)
 			end
         end)
         self.TopBarConnections[frame.Name .. "Ended"] = frame.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseMovement then
+                if self.CurrentTopBarSelectedButton == frame.Name then
+                    return
+                end
                 hoverOffTopBarTween(self, frame)
 			end
         end)
@@ -246,6 +281,9 @@ end
 function openTopBarTween(self)
     self.Tweens.TopBarOpen.Bar:Play()
     self.Tweens.TopBarOpen.Bar.Completed:Once(function()
+        if not self.IsTopBarOpen then
+            return
+        end
         for i, v in pairs(self.Tweens.TopBarOpen) do
             if i == "Bar" then
                 continue
@@ -271,7 +309,9 @@ function closeTopBarTween(self)
         hoverOffTopBarTween(self, frame)
     end
     last.Completed:Once(function()
-        self.Tweens.TopBarClose.Bar:Play()
+        if not self.IsTopBarOpen then
+            self.Tweens.TopBarClose.Bar:Play()
+        end
     end)
 end
 
@@ -325,6 +365,34 @@ function enableChat()
 	if not success then
 		error(message)
 	end
+end
+
+function enableHud(self)
+    local hud = self.HUD
+
+    if hud.gui then
+        hud:Enable()
+    end
+
+    for i, v in pairs(self.DisabledHUDs) do
+        v.Enabled = true
+    end
+    self.DisabledHUDs = {}
+end
+
+function disableHud(self)
+    local hud = self.HUD
+
+    if hud.gui then
+        hud:Disable()
+    end
+    
+    for _, v in pairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
+        if v.Enabled and v.Name ~= "MainMenuGui" then
+            v.Enabled = false
+            table.insert(self.DisabledHUDs, v)
+        end
+    end
 end
 
 return MainMenu

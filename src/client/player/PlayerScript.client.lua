@@ -1,3 +1,10 @@
+-- [[ CONFIGURATION ]]
+local HIGHLIGHT_OUTLINE_COLOR = Color3.fromRGB(255, 0, 0)
+local HIGHLIGHT_OUTLINE_TRANSPARENCY = 0.3
+local HIGHLIGHT_FILL_COLOR = Color3.fromRGB(255, 73, 73)
+local HIGHLIGHT_FILL_TRANSPARENCY = 0.4
+local DEFAULT_IMPULSE_NORMAL = Vector3.new(math.random(1,10),math.random(1,10),math.random(1,10)).Unit
+
 game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
 local Players = game:GetService("Players")
@@ -9,9 +16,12 @@ local SelfDiedEvent = EvoPlayerEvents:WaitForChild("PlayerDiedBindable")
 local PlayerDiedEvent = EvoPlayerEvents:WaitForChild("PlayerDiedRemote")
 local BotAddedEvent = Framework.Service.BotService.Remotes.BotAdded
 local StoredDamageInfo = require(Framework.Module.EvoPlayer.StoredDamageInformation)
+local PlayerAttributes = require(Framework.Module.PlayerAttributes)
 
 local plr = Players.LocalPlayer
 local currentStoredDamageInfo = false
+
+local storedPlayers = {}
 
 local Ragdolls = {
     Stored = {},
@@ -26,10 +36,11 @@ local Ragdolls = {
 
 -- | Main |
 function main()
-    playerAdded(plr)
+    
     for _, v in pairs(Players:GetPlayers()) do
         playerAdded(v)
     end
+
     Players.PlayerAdded:Connect(playerAdded)
     Players.PlayerRemoving:Connect(playerRemoving)
     BotAddedEvent.OnClientEvent:Connect(function(botChar, bot)
@@ -39,25 +50,39 @@ function main()
     EvoPlayerEvents.PlayerReceivedDamageRemote.OnClientEvent:Connect(receivedDamage)
     EvoPlayerEvents.PlayerGaveDamageBind.Event:Connect(gaveDamage)
     EvoPlayerEvents.GetPlayerDamageInteractionsBind.OnInvoke = getPlayerDamageInteractions
-
-    -- connect death function
-    plr.CharacterAdded:Connect(characterAdded)
-    --DiedBindableEvent.Event:Connect(playerDied)
 end
 
 function playerAdded(player)
+    if storedPlayers[player.Name] then
+        return
+    end
+    storedPlayers[player.Name] = player
     Ragdolls.initPlayer(player)
+    player.CharacterAdded:Connect(characterAdded)
 end
 
 function playerRemoving(player)
     Ragdolls.removePlayer(player)
+    storedPlayers[player.Name] = nil
 end
 
 function characterAdded(char)
-    if currentStoredDamageInfo then
-        currentStoredDamageInfo:Destroy()
+    local deadHighlight = Instance.new("Highlight")
+    deadHighlight.Enabled = true
+    deadHighlight.Parent = char
+    deadHighlight.Name = "EnemyHighlight"
+    deadHighlight.FillColor = HIGHLIGHT_FILL_COLOR
+    deadHighlight.FillTransparency = HIGHLIGHT_FILL_TRANSPARENCY
+    deadHighlight.OutlineColor = HIGHLIGHT_OUTLINE_COLOR
+    deadHighlight.OutlineTransparency = HIGHLIGHT_OUTLINE_TRANSPARENCY
+    deadHighlight.DepthMode = Enum.HighlightDepthMode.Occluded
+
+    if Players:GetPlayerFromCharacter(char) == plr then
+        if currentStoredDamageInfo then
+            currentStoredDamageInfo:Destroy()
+        end
+        currentStoredDamageInfo = StoredDamageInfo.new(plr)
     end
-    currentStoredDamageInfo = StoredDamageInfo.new(plr)
 end
 
 function receivedDamage(damagerName, damage)
@@ -157,6 +182,9 @@ end
 function Ragdolls.characterDied(player, character, ragdollClone)
     Ragdolls.ragdollCharacter(character, ragdollClone)
     Ragdolls.Stored[player.Name].CharacterAlive = false
+    pcall(function()
+        character.EnemyHighlight.Parent = ragdollClone
+    end)
 end
 
 function Ragdolls.initCharacterSpawn(char)
@@ -273,13 +301,19 @@ function Ragdolls.ragdollCharacter(character, ragdollClone)
     game:GetService("Debris"):AddItem(ragdollClone, Ragdolls.config.RagdollDecayLength)
 end
 
+function getCharAttribute(character, attribute)
+    local player = Players:GetPlayerFromCharacter(character) or {Name = "BOT_" .. character.Name}
+    return PlayerAttributes:GetCharacterAttribute(player, attribute)
+end
+
 function Ragdolls.impulse(character, ragdollClone)
-    local bulletRagdollNorm = -(character:GetAttribute("bulletRagdollKillDir") or Vector3.new(math.random(1,10),math.random(1,10),math.random(1,10)).Unit)
-    local impulseModifier = character:GetAttribute("impulseModifier") or 1
+
+    local bulletRagdollNorm = -(getCharAttribute(character, "bulletRagdollKillDir") or DEFAULT_IMPULSE_NORMAL)
+    local impulseModifier = getCharAttribute(character, "impulseModifier") or 1
 
     if bulletRagdollNorm then
         local bulletRagdollPart
-        local bulletRagdollPartName = character:GetAttribute("lastHitPart")
+        local bulletRagdollPartName = getCharAttribute(character, "lastHitPart") --character:GetAttribute("lastHitPart")
 
         if not bulletRagdollPartName then bulletRagdollPart = ragdollClone.Head else
             bulletRagdollPart = ragdollClone:FindFirstChild(bulletRagdollPartName)

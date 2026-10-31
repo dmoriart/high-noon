@@ -8,7 +8,7 @@ local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
 
 local Strings = require(Framework.Module.lib.fc_strings)
 local Math = require(Framework.Module.lib.fc_math)
-local States = require(Framework.Module.m_states)
+local States = require(Framework.Module.States)
 local EvoPlayer = require(Framework.Module.EvoPlayer)
 local EmitParticle = require(Framework.Module.lib.fc_emitparticle)
 local BulletHitUtil = require(script.Parent:WaitForChild("fc_bulletHitUtil"))
@@ -18,6 +18,8 @@ local BulletModel = MainObj:WaitForChild("Bullet")
 local BulletHole = MainObj:WaitForChild("BulletHole")
 local GlobalSounds = Framework.Service.WeaponService.ServiceAssets.Sounds
 local Replicate = Framework.Service.WeaponService.Events.Replicate
+
+local PlayerAttributes = require(Framework.Module.PlayerAttributes)
 
 local module = {}
 
@@ -94,6 +96,40 @@ end
 
 -- Weapon Bullets
 
+function module.GetBulletHitSound(result)
+	local material = result.Instance:GetAttribute("ObjectHitMaterial") or result.Instance:GetAttribute("Bangable") or result.Instance.Material.Name
+
+	if material == "Metal" then
+		material = "HeavyMetal"
+	end
+
+	local hitSoundFolder
+	pcall(function()
+		hitSoundFolder = GlobalSounds.ObjectHit[material]
+	end)
+	hitSoundFolder = hitSoundFolder or GlobalSounds.ObjectHit.Pavement
+
+	local volumeMinMax = Vector2.new(3,6)
+	if result.Distance and result.Distance < 50 then
+		volumeMinMax *= result.Distance / 50
+	end
+
+	local IsReplicated = false
+	pcall(function()
+		IsReplicated = result.IsReplicated
+	end)
+	if IsReplicated then
+		volumeMinMax *= 0.7
+	end
+
+	local properties = {
+		Volume = math.random(volumeMinMax.X, volumeMinMax.Y) * 0.1
+	}
+
+	local children = hitSoundFolder:GetChildren()
+	return children[math.random(1,#children)], properties
+end
+
 function module.CreateBulletHole(result, partCache)
 	if not result then return end
 	local isBangable = false
@@ -101,6 +137,7 @@ function module.CreateBulletHole(result, partCache)
 		isBangable = result.IsBangableWall
 	end)
 	isBangable = _succ and isBangable or false
+
 	EmitParticle.EmitParticles(result.Instance, EmitParticle.GetBulletParticlesFromInstance(result.Instance), result.Position, nil, nil, nil, isBangable)
 
 	local normal = result.Normal
@@ -125,6 +162,9 @@ function module.CreateBulletHole(result, partCache)
 	weld.Part1 = result.Instance
 	bullet_hole.Parent = workspace.Temp
 
+	local sound, properties = module.GetBulletHitSound(result)
+	module.PlaySound(bullet_hole, false, sound, properties)
+
 	if RunService:IsClient() then
 		CollectionService:AddTag(bullet_hole, "DestroyOnPlayerDied_" .. Players.LocalPlayer.Name)
 	end
@@ -133,13 +173,14 @@ function module.CreateBulletHole(result, partCache)
 		task.delay(8, function()
 			bullet_hole_cache_obj:Destroy()
 		end)
+	else
+		Debris:AddItem(bullet_hole, 8)
 	end
 
 	return bullet_hole
 end
 
 function module.CreateBullet(tool, endPos, client, fromModel, partCache)
-
 	--create bullet part
 	local part
 	local part_cache_object
@@ -215,19 +256,24 @@ end
 	FireBullet
 
 	Replicates CreateBullet to all Clients except caster
-]] 
+]]
 function module.FireBullet(fromChar, result, isHumanoid, isBangable, tool, fromModel, partCache)
 	if game:GetService("RunService"):IsServer() then return end
 	module.CreateBullet(tool, result.Position, true, fromModel, partCache)
-	task.spawn(function()
-		Replicate:FireServer("CreateBullet", tool, result.Position, false)
-	end)
+	Replicate:FireServer("CreateBullet", tool, result.Position, false)
 	if not isHumanoid then
-		module.CreateBulletHole({Position = result.Position, Instance = result.Instance, Normal = result.Normal, IsBangableWall = isBangable}, partCache)
-		task.spawn(function()
-			Replicate:FireServer("CreateBulletHole", {Position = result.Position, Instance = result.Instance, Normal = result.Normal, IsBangableWall = isBangable})
-		end)
+		module.CreateBulletHole({Position = result.Position, Instance = result.Instance, Normal = result.Normal, IsBangableWall = isBangable, Distance = result.Distance}, partCache)
+		Replicate:FireServer("CreateBulletHole", {Position = result.Position, Instance = result.Instance, Normal = result.Normal, IsBangableWall = isBangable, IsReplicated = true, Distance = result.Distance})
 	end
+end
+
+-- Get attributes from PlayerAttributes
+function setCharAttribute(player, attribute, value)
+    return PlayerAttributes:SetCharacterAttributeAsync(player, attribute, value)
+end
+
+function getCharAttribute(player, attribute)
+    return PlayerAttributes:GetCharacterAttribute(player, attribute)
 end
 
 -- Weapon Shot & Damage Registration
@@ -264,15 +310,14 @@ function util_getDamageFromHumResult(player, char, weaponOptions, pos, instance,
 			particleFolderName = "Headshot"
 			soundFolderName = "Headshot"
 
-		elseif string.match(instance.Name, "Leg") or string.match(instance.Name, "Foot") then
+		elseif string.match(instance.Name, "LowerLeg") or string.match(instance.Name, "Foot") then
 			damage *= weaponOptions.damage.legMultiplier
 		end
 
 		-- calculate damage falloff
-		if distance > weaponOptions.damage.damageFalloffDistance and calculateFalloff then
+		if distance >= weaponOptions.damage.damageFalloffDistance and calculateFalloff then
 			local diff = distance - weaponOptions.damage.damageFalloffDistance
-			damage = math.max(damage - diff * (weaponOptions.damage.damageFalloffPerMeter * calculateFalloff), min)
-			damage = math.min(damage, weaponOptions.damage.base)
+			damage = math.max(damage - (diff * (weaponOptions.damage.damageFalloffPerMeter * calculateFalloff)), min)
 		end
 
 		-- wallbang multiplier
@@ -282,15 +327,24 @@ function util_getDamageFromHumResult(player, char, weaponOptions, pos, instance,
 		damage = math.round(damage)
 
 		-- set ragdoll variations
-		char:SetAttribute("bulletRagdollNormal", -normal)
+
+		local attributePlayer = Players:GetPlayerFromCharacter(char) or  {Name = "BOT_" .. char.Name}
+
+		--[[char:SetAttribute("bulletRagdollNormal", -normal)
 		char:SetAttribute("bulletRagdollKillDir", (player.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Unit)
 		char:SetAttribute("lastHitPart", instance.Name)
 		char:SetAttribute("lastUsedWeapon", weaponOptions.name)
 		char:SetAttribute("lastUsedWeaponDestroysHelmet", weaponOptions.damage.destroysHelmet or false)
-		char:SetAttribute("lastUsedWeaponHelmetMultiplier", weaponOptions.damage.helmetMultiplier or 1)
+		char:SetAttribute("lastUsedWeaponHelmetMultiplier", weaponOptions.damage.helmetMultiplier or 1)]]
+		setCharAttribute(attributePlayer, "bulletRagdollNormal", -normal)
+		setCharAttribute(attributePlayer, "bulletRagdollKillDir", (player.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Unit)
+		setCharAttribute(attributePlayer, "lastHitPart", instance.Name)
+		setCharAttribute(attributePlayer, "lastUsedWeapon", weaponOptions.name)
+		setCharAttribute(attributePlayer, "lastUsedWeaponDestroysHelmet", weaponOptions.damage.destroysHelmet or false)
+		setCharAttribute(attributePlayer, "lastUsedWeaponHelmetMultiplier", weaponOptions.damage.helmetMultiplier or 1)
 
 		-- apply damage
-		damage, killed = EvoPlayer:TakeDamage(char, damage, player.Character)
+		damage, killed = EvoPlayer:TakeDamage(char, damage, player.Character, weaponOptions.name, instance.Name)
 
         if RunService:IsServer() then
 			-- apply tag so we can easily access damage information
@@ -338,7 +392,8 @@ function module.RegisterShot(player, weaponOptions, result, origin, _, _, isHuma
 			-- _[1] = damage, _[2] = particleFolderName[deprecated]
 			_, _, killed = util_getDamageFromHumResult(player, char, weaponOptions, result.Position, result.Instance, result.Normal, origin, wallbangDamageMultiplier)
 			BulletHitUtil.PlayerHitParticles(char, result.Instance, killed)
-			BulletHitUtil.PlayerHitSounds(char, result.Instance, killed)
+			--BulletHitUtil.PlayerHitSounds(char, result.Instance, killed) Player hit sounds handeled in EvoPlayer!
+			-- Maybe Particles can be handeled there too.
 		end
 		
 		return module.FireBullet(player.Character, result, isHumanoid, isBangable, tool, fromModel, partCache)
@@ -363,7 +418,7 @@ end
 
 -- Weapon Sounds
 
-function module.PlaySound(playFrom, weaponName, sound) -- if not weaponName, sound will not be destroyed upon recreation
+function module.PlaySound(playFrom, weaponName, sound, properties) -- if not weaponName, sound will not be destroyed upon recreation
 	local c: Sound
 
 	-- destroy sound on recreation if weaponName is specified
@@ -380,7 +435,15 @@ function module.PlaySound(playFrom, weaponName, sound) -- if not weaponName, sou
 	c = sound:Clone() :: Sound
 	c.Name = weaponName .. "_" .. sound.Name
 	c.Parent = playFrom
+
+	if properties then
+		for i, v in pairs(properties) do
+			c[i] = v
+		end
+	end
+
 	c:Play()
+
 	Debris:AddItem(c, c.TimeLength + 0.06)
 	return c
 end
@@ -443,14 +506,14 @@ function module.GetMovementInaccuracyVector2(player, baseAccuracy, weaponOptions
 	
 	-- movement speed inacc
 	local movementSpeed = player.Character.HumanoidRootPart.Velocity.Magnitude
-	local mstate = States.State("Movement")
+	local mstate = States:Get("Movement")
 	local rspeed = movementConfig.walkMoveSpeed + math.round((movementConfig.groundMaxSpeed - movementConfig.walkMoveSpeed)/2)
 
-	if mstate:get(player, "landing") or (movementSpeed > 14 and movementSpeed < rspeed) then
+	if mstate:get("landing") or (movementSpeed > 14 and movementSpeed < rspeed) then
 		baseAccuracy = weaponOptions.accuracy.walk
 	elseif movementSpeed >= rspeed then
 		baseAccuracy = weaponOptions.accuracy.run
-	elseif mstate:get(player, "crouching") then
+	elseif mstate:get("crouching") then
 		baseAccuracy = weaponOptions.accuracy.crouch
 	end
 	

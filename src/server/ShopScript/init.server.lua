@@ -10,6 +10,8 @@ local Cases = require(ServerStorage.Stored.Cases)
 local Skins = require(ReplicatedStorage.Assets.Shop.Skins)
 local Keys = require(ServerStorage.Stored.Keys)
 local HTTPService = game:GetService("HttpService")
+local SkinsDB = require(ServerStorage.SkinsDatabase)
+local InventoryInterface = require(Framework.Module.InventoryInterface)
 
 local Shop = {}
 local RemoteFunctions = {}
@@ -118,6 +120,7 @@ end
 
 function Shop.SellItem(player, shopItemStr, inventoryItemStr)
     local shopSkin = Shop.parseItemString(shopItemStr)
+    local invSkin = InventoryInterface.ParseSkinString(inventoryItemStr)
     local skinInventory = PlayerData:GetPath(player, "ownedItems." .. shopSkin.item_type)
 
     local hasSkinIndex = false
@@ -136,12 +139,15 @@ function Shop.SellItem(player, shopItemStr, inventoryItemStr)
     PlayerData:SetPath(player, "ownedItems." .. shopSkin.item_type, skinInventory)
     PlayerData:IncrementPath(player, "economy.strafeCoins", shopSkin.sell_sc or (shopSkin.price_sc*0.75))
     PlayerData:Save(player)
+    SkinsDB:RemoveSkin(invSkin)
     return true
 end
 
 function Shop.HasKey(player, caseName)
     local keyInventory = PlayerData:GetPath(player, "ownedItems.key")
     for i, v in pairs(keyInventory) do
+        print(v)
+        print(caseName)
         if string.match(v, caseName) then
             return i, keyInventory
         end

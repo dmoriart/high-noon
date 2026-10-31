@@ -63,6 +63,7 @@ local Skins = {
             ruby = {            name = "Ruby",            rarity = "Legendary",     price_pc = 1850,   price_sc = 18500,   sell_sc = 13875},
             sapphire = {        name = "Sapphire",        rarity = "Legendary",     price_pc = 1850,   price_sc = 18500,   sell_sc = 13875},
             matteObsidian = {   name = "Matte Obsidian",  rarity = "Legendary",     price_pc = 1850,   price_sc = 18500,   sell_sc = 13875},
+            fractal7 = {        name = "Fractal",         rarity = "Legendary",     price_pc = 1850,   price_sc = 18500,   sell_sc = 13875},
         },
         butterfly = {
             default = {         name = "Default",         rarity = "Legendary",     price_pc = 1500,   price_sc = 15000,   sell_sc = 11250},
@@ -118,6 +119,14 @@ SkinsModule.GetSkinFromInvString = function(str)
         shopstr = "knife_" .. shopstr
     end
     return Strings.convertPathToInstance(shopstr, Skins, false, "_")
+end
+
+function SkinsModule.GetSkinRarityFromInvString(str)
+    local split = str:split("_")
+    if split[1] == "knife" then
+        return Skins.knife[split[2]][split[3]].rarity
+    end
+    return Skins[split[2]][split[3]].rarity
 end
 
 return SkinsModule

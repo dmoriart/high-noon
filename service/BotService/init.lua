@@ -1,14 +1,18 @@
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
+local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
+local Types = require(script:WaitForChild("Types"))
+local EvoPlayer = require(Framework.Module.EvoPlayer)
+
+local StarterCharacterTemplate = game:GetService("StarterPlayer").StarterCharacter
 
 local RagdollRE = Framework.Module.Ragdolls.Remotes.RemoteEvent
 local PlayerDiedEvent = Framework.Module.EvoPlayer.Events.PlayerDiedRemote
 local BotAddedEvent = Framework.Service.BotService.Remotes.BotAdded
-local Types = require(script:WaitForChild("Types"))
-local ServerStorage = game:GetService("ServerStorage")
-local StarterCharacterTemplate = game:GetService("StarterPlayer").StarterCharacter
-local EvoPlayer = require(Framework.Module.EvoPlayer)
+local BotAddedBind = Framework.Service.BotService.Remotes.BotAddedBindable
 local BotDiedBind = script.Remotes.BotDiedBindable
 
 local Bots = {}
@@ -17,11 +21,13 @@ Bots.BotNames = {"Fred", "Dave", "Laney", "George", "Ardiis"}
 
 -- Add a bot to the game
 function Bots:AddBot(properties)
+    print("ADDING BOT")
     local character = StarterCharacterTemplate:Clone()
     character.Parent = ServerStorage
+    character:SetAttribute("Bot", true)
 
     properties = properties or {}
-    if not properties.SpawnCFrame then properties.SpawnCFrame = game.ReplicatedStorage.Services.GamemodeService2.GamemodeScripts.Deathmatch.Spawns.Default.CFrame end
+    if not properties.SpawnCFrame then properties.SpawnCFrame = game.ServerStorage.CurrentSpawns.Deathmatch.Default.CFrame end
     local botProperties = Types.BotProperties.new(properties)
 
     -- set bot loaded property
@@ -88,6 +94,8 @@ function Bots:AddBot(properties)
     character.Parent = workspace
 
     -- fire botadded event to all clients
+    
+    BotAddedBind:Fire(character, new_bot)
     BotAddedEvent:FireAllClients(character, new_bot)
 
     -- create ragdolls
@@ -178,9 +186,19 @@ function _connectBotDiedEvent(new_bot)
     new_bot.Properties._humDiedConn = hum.Died:Once(function()
         if new_bot.Properties.Destroyed then return end
 
+        local killer = character:FindFirstChild("DamageTag") and character.DamageTag.Value or false
+        if not killer then
+            killer = character:GetAttribute("Killer")
+            if killer then
+                killer = Players[killer]
+            end
+        end
+
+        local weaponUsed = character:GetAttribute("WeaponUsedToKill")
+
         -- death event
-        BotDiedBind:Fire(new_bot, character)
-        PlayerDiedEvent:FireAllClients(character)
+        BotDiedBind:Fire(new_bot, killer, weaponUsed)
+        PlayerDiedEvent:FireAllClients(character, killer, weaponUsed)
         
         if not hum:GetAttribute("Removing") then
             if new_bot.Properties.Respawn then
@@ -202,6 +220,12 @@ function _connectBotDiedEvent(new_bot)
             end
         end
     end)
+end
+
+if RunService:IsServer() then
+    script.Remotes.GetBotsBindable.OnInvoke = function()
+        return Bots.Bots
+    end
 end
 
 return Bots

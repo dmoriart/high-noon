@@ -106,6 +106,14 @@ function Client:Save()
     return RemoteFunction:InvokeServer("Set", Client._cache)
 end
 
+--@summary Set an Option Value, enforcing limits and type restrictions.
+function Client:SetOptionValue(optionKey, valueKey, value)
+    if not Shared:VerifyNewOptionValue(optionKey, valueKey, value) then
+        return false, "Option value not verified."
+    end
+    return Client:SetPath("options." .. optionKey .. "." .. valueKey, value)
+end
+
 --@summary Listen for the changedBindable Event.
 type Path = string
 type Key = string
@@ -190,12 +198,13 @@ function _waitForCache()
 end
 
 function _update()
+    local didFinish = false
     if not Players:FindFirstChild(player.Name) then
         conn[1]:Disconnect()
         conn[2]:Disconnect()
-        return
+        didFinish = true
     end
-    if Client._changed and tick() >= Client._changed then
+    if didFinish or Client._changed and tick() >= Client._changed then
         Client._changed = false
         Client:Save()
     end
@@ -205,5 +214,6 @@ end
 _getFromServer(true)
 conn[1] = RemoteEvent.OnClientEvent:Connect(_remoteClientEvent)
 conn[2] = RunService.RenderStepped:Connect(_update)
+
 
 return Client

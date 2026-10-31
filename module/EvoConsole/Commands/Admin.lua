@@ -1,10 +1,16 @@
 local Players = game:GetService("Players")
-local Framework = require(game:GetService("ReplicatedStorage"):WaitForChild("Framework"))
-local EmitParticles = require(Framework.shfc_emitparticle.Location)
---local GamemodeService = require(game:GetService("ReplicatedStorage"):WaitForChild("Services"):WaitForChild("GamemodeService"))
-local GamemodeService = require(game:GetService("ReplicatedStorage"):WaitForChild("Services"):WaitForChild("GamemodeService2"))
-local EvoMaps = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("EvoMaps"))
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
+local EmitParticles = require(Framework.Module.lib.fc_emitparticle)
+local GamemodeService = require(Framework.Service.GamemodeService2)
+local EvoMaps = require(Framework.Module.EvoMaps)
 local Globals = require(Framework.Module.lib.fc_global)
+local GamemodeEvents = ReplicatedStorage.GamemodeEvents
+local PlayerData = require(Framework.Module.PlayerData)
+local GameService = require(Framework.Service.GameService)
+local Bridge = script.Parent.Parent.Objects.Bridge
+
+local storedSvList = false
 
 local ParticlesTable
 task.spawn(function()
@@ -15,9 +21,9 @@ local Commands = {}
 
 -- _ == player
 
-Commands.Emit = {
+Commands.emit = {
 	Description = "Emit specified particle from the part you are looking at",
-	Public = false,
+	Public = true,
 	
 	Function = function(self, _, particle, ...)
 		-- raycast
@@ -38,9 +44,9 @@ Commands.Emit = {
 	end,
 }
 
-Commands.SetCameraMode = {
+Commands.setcameramode = {
 	Description = "Set to LockFirstPerson or Classic",
-	Public = false,
+	Public = true,
 	
 	Function = function(_, _, cameraType)
 		local t = Enum.CameraMode[cameraType] or false
@@ -50,53 +56,35 @@ Commands.SetCameraMode = {
 	end,
 }
 
-Commands.AddWeapon = {
+Commands.addweapon = {
 	Description = "Add specified weapon to your inventory",
-	Public = false,
+	Public = true,
 	
 	Function = function(_, player, weapon)
 		require(game:GetService("ReplicatedStorage").Services.WeaponService):AddWeapon(player, weapon)
 	end
 }
 
-Commands.AddAbility = {
+Commands.addability = {
 	Description = "Add specified ability to your inventory",
-	Public = false,
+	Public = true,
 
 	Function = function(_, player, ability)
 		require(game:GetService("ReplicatedStorage").Services.AbilityService):AddAbility(player, ability)
 	end
 }
 
-Commands.GM = {
-	Description = "Gamemode management commands.<br /> 'get', 'set', 'restart'",
-	public = false,
-
-	Function = function(_, _, action, gamemode)
-		if action == "get" then
-			print(GamemodeService.Gamemode and GamemodeService.Gamemode.Name or "None")
-		elseif action == "set" then
-			GamemodeService:ChangeGamemode(gamemode)
-		elseif action == "restart" then
-			GamemodeService:RestartGamemode()
-		end
-	end
-}
-
 Commands.Gamemode = {
 	Description = "Set the gamemode",
-	Public = false,
+	Public = true,
 	
 	Function = function(self, _, gamemodeName)
-		print('Attempt change the mothjercucking j')
+		self:Print("This command is not available right now.")
+		--[[print('Attempt change the mothjercucking j')
 		GamemodeService:SetGamemode(gamemodeName)
 		print("Post attempt change the motherufkcing ad")
-		--game:GetService("ReplicatedStorage").gamemode.remote.Set:FireServer(gamemodeName)
+		--game:GetService("ReplicatedStorage").gamemode.remote.Set:FireServer(gamemodeName)]]
 	end,
-}
-
-Commands.gm_restart = {
-
 }
 
 Commands.Place = {
@@ -132,42 +120,15 @@ Commands.Place = {
 
 Commands.Map = {
 	Description = "Set the game's map. Will restart the current gamemode.",
-	Public = false,
+	Public = true,
 
 	Function = function(self, player, mapName)
 		if not Globals.wassert(mapName, "Could not teleport, Map Name is required!") then return end
 		self:Print("Setting map to " .. mapName)
-		GamemodeService:RestartGamemode()
-		EvoMaps:RequestClientSetMap(player, mapName)
-	end
-}
-
-Commands.qs_clearqueues = {
-	Description = "Clear all queue data stores {Debug}",
-	Public = false,
-
-	Function = function()
-		game:GetService("ReplicatedStorage").main.sharedMainRemotes.requestQueueFunction:InvokeServer("ClearAll")
-	end
-}
-
-Commands.qs_printqueues = {
-	Description = "Print all players that are in queues {Debug}",
-	Public = false,
-
-	Function = function()
-		game:GetService("ReplicatedStorage").main.sharedMainRemotes.requestQueueFunction:InvokeServer("PrintAll")
-	end
-}
-
---
-
-Commands.as_add = {
-	Description = "Add an ability using AbilityService (new)",
-	Public = false,
-
-	Function = function(_, player, ability)
-		require(game.ReplicatedStorage.Services.AbilityService):AddAbility(player, ability)
+		local canSetMap = EvoMaps:RequestClientSetMap(player, mapName)
+		if canSetMap then
+			self:Print('Restarting in 2 sec')
+		end
 	end
 }
 
@@ -175,7 +136,7 @@ Commands.as_add = {
 
 Commands.addsc = {
 	Description = "Add Strafe Coins to a player",
-	Public = false,
+	Public = true,
 
 	Function = function(self, _, player, amount)
 		player = player == "self" and game.Players.LocalPlayer or Players:FindFirstChild(player)
@@ -194,7 +155,7 @@ Commands.addsc = {
 
 Commands.addinvitem = {
 	Description = "Add Strafe Coins to a player",
-	Public = false,
+	Public = true,
 
 	Function = function(self, _, player, item) -- player is sent player via text
 		player = player == "self" and game.Players.LocalPlayer or Players:FindFirstChild(player)
@@ -211,18 +172,77 @@ Commands.addinvitem = {
 	end
 }
 
-Commands.gmhud_test = {
-	Description = "Test a Gamemode HUD event. Will test RoundOver",
-	public = false,
+Commands.addbot = {
+	Description = "Add a bot",
+	Public = true,
 
-	Function = function(self, player, length)
-		local m1 = require(player.PlayerScripts.GamemodeHUD["1v1"])
-		m1.Init()
-		m1.Enable(player)
-		m1.RoundOver(player)
-		task.wait(tonumber(length) or 3)
-		m1.RoundStart()
-		m1.Disable()
+	Function = function(self)
+		Framework.Service.GameService.Remotes.BotSpawn:FireServer()
+		return self:Print("Adding bot...")
+	end
+}
+
+Commands.svlist = {
+	Description = "List all of the sv commands.",
+	Public = true,
+
+	Function = function(self)
+		if not storedSvList then
+			storedSvList = Framework.Service.GameService.Remotes.Get:InvokeServer("ServerVars")
+		end
+
+		for _, v in pairs(storedSvList) do
+			self:Print(v)
+		end
+	end
+}
+
+Commands.mp_restartgame = {
+	Description = "Restart the game without changing the GameOptions.",
+	Public = true,
+
+	Function = function(self, _, length)
+		local success, err = Framework.Service.GameService.Remotes.MultiplayerFunction:InvokeServer("RestartGame", length)
+		if not success then
+			err = err or "Command error, no error message provided."
+			return self:Error(err)
+		end
+		return self:Print("Restarting game...")
+	end
+}
+
+Commands.mp_resetgame = {
+	Description = "Restart the game and reset GameOptions.",
+	Public = true,
+
+	Function = function(self, _, length)
+		local success, err = Framework.Service.GameService.Remotes.MultiplayerFunction:InvokeServer("ResetGame", length)
+		if not success then
+			err = err or "Command error, no error message provided."
+			return self:Error(err)
+		end
+		return self:Print("Restarting game...")
+	end
+}
+
+Commands.aimlock = {
+	Function = function(self)
+		local success, err = ReplicatedStorage.Remotes.Extras:InvokeServer("aimlock")
+		if not success then
+			return self:Error(err)
+		end
+		return self:Print(err)
+	end
+}
+
+--
+
+Commands.demo = {
+	Description = "Spawn bots for the new demo video",
+	Public = true,
+
+	Function = function(self)
+		Bridge:InvokeServer("DemoCommand")
 	end
 }
 

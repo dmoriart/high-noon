@@ -1,31 +1,36 @@
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
 local PlayerData = require(Framework.Module.PlayerData)
-local Popup = require(game:GetService("Players").LocalPlayer.PlayerScripts.MainMenu.popup) -- Main SendMessageGui Popup
+local Popup = require(script.Parent.Parent.Popup)
+--local Popup = require(game:GetService("Players").LocalPlayer.PlayerScripts.MainMenu.popup) -- Main SendMessageGui Popup
 
 local ShopInterface = require(Framework.Module.ShopInterface)
 local ShopAssets = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Shop")
 local AttemptItemPurchaseGui = ShopAssets:WaitForChild("AttemptItemPurchase")
-local ItemList = require(script.Parent.Parent.components.ItemList)
+local ItemList = require(script:WaitForChild("ItemList"))
 local ShopRarity = require(ReplicatedStorage.Assets.Shop.Rarity)
 
-local Shop = {}
+local Page = require(script.Parent)
+local Shop = setmetatable({}, Page)
+Shop.__index = Shop
 --TODO: change all Shop-Personal functions to be a script function rather than a module function.
 
 -- [[ PAGE CLASS FUNCTIONS ]]
-function Shop:init()
-    self = setmetatable(Shop, self)
+function Shop.new(mainMenu, frame)
+    local self = setmetatable(Page.new(mainMenu, frame), Shop)
+
     self.Player = game.Players.LocalPlayer
     self.button_connections = {}
 
-    self.itemDisplayFrame = self.Location:WaitForChild("ItemDisplayFrame")
+    self.itemDisplayFrame = self.Frame:WaitForChild("ItemDisplayFrame")
     self.itemDisplayVar = {active = false, purchaseActive = false, purchaseProcessing = false}
     self.itemDisplayConns = {}
 
     -- ItemLists
     self.itemLists = {}
-    for _, itemListFrame in pairs(self.Location:GetChildren()) do
+    for _, itemListFrame in pairs(self.Frame:GetChildren()) do
         if itemListFrame:IsA("Frame") and string.match(itemListFrame.Name, "ItemList_") then
             local OItemList = ItemList.init(self, itemListFrame)
             self.itemLists[itemListFrame.Name] = OItemList
@@ -41,42 +46,43 @@ function Shop:init()
         end)
     }
 
-    local owned = self.Location:WaitForChild("OwnedFrame")
+    local owned = self.Frame:WaitForChild("OwnedFrame")
     self.pcLabel = owned:WaitForChild("PremiumCreditAmountLabel")
     self.scLabel = owned:WaitForChild("StrafeCoinAmountLabel")
     
     local pd = PlayerData:GetKey("economy")
     self:UpdateEconomy(pd.strafeCoins, pd.premiumCredits)
+
     return self
 end
 
 function Shop:Open()
+    self._Open()
     self:ConnectButtons()
-    self:OpenAnimations()
     self:TogglePages(true)
 end
 
 function Shop:Close()
+    self._Close()
     self:DisconnectButtons()
     self:CloseItemDisplay()
-    self.Location.Visible = false
     self:TogglePages()
 end
 
 --
 
 function Shop:ConnectButtons()
-    self.button_connections.skins = self.Location.SkinsButton.MouseButton1Click:Connect(function()
+    self.button_connections.skins = self.Frame.SkinsButton.MouseButton1Click:Connect(function()
         self:OpenSkinsPage()
-        self:PlaySound("Open")
+        self.Main:PlayButtonSound("Open")
     end)
-    self.button_connections.collections = self.Location.CollectionsButton.MouseButton1Click:Connect(function()
+    self.button_connections.collections = self.Frame.CollectionsButton.MouseButton1Click:Connect(function()
         self:OpenCollectionsPage()
-        self:PlaySound("Open")
+        self.Main:PlayButtonSound("Open")
     end)
-    self.button_connections.cases = self.Location.CasesButton.MouseButton1Click:Connect(function()
+    self.button_connections.cases = self.Frame.CasesButton.MouseButton1Click:Connect(function()
         self:OpenCasesPage()
-        self:PlaySound("Open")
+        self.Main:PlayButtonSound("Open")
     end)
 end
 
@@ -87,49 +93,45 @@ function Shop:DisconnectButtons()
 end
 
 -- [[ COLLECTIONS / SKINS / CASES PAGE ]]
-function Shop:OpenSkinsPage(async)
-    if not async and self.openItemList == "Skins" then
+
+local pages = {
+    Skins = {"Skins"},
+    Cases = {"Cases", "Keys"},
+    Collections = {"Collections"}
+}
+
+local function openPage(self, page, async)
+    if not async and self.openItemList == page then
         return
     end
-    self.openItemList = "Skins"
 
-    self.Location.SkinsButton.BackgroundColor3 = Color3.fromRGB(29, 42, 59)
-    self.Location.CollectionsButton.BackgroundColor3 = Color3.fromRGB(136, 164, 200)
-    self.Location.CasesButton.BackgroundColor3 = Color3.fromRGB(136, 164, 200)
-    self.itemLists.ItemList_Skins:Enable()
-    self.itemLists.ItemList_Cases:Disable()
-    self.itemLists.ItemList_Keys:Disable()
-    self.itemLists.ItemList_Collections:Disable()
+    self.openItemList = page
+    for pageName, strs in pairs(pages) do
+        local funcName = "Disable"
+        local bgColor = Color3.fromRGB(176, 187, 200)
+        if pageName == page then
+            funcName = "Enable"
+            bgColor = Color3.fromRGB(94, 100, 107)
+        end
+
+        for _, subPageName in pairs(strs) do
+            local pg = self.itemLists["ItemList_"..subPageName]
+            self.Frame[pageName.."Button"].BackgroundColor3 = bgColor
+            pg[funcName](pg)
+        end
+    end
+end
+
+function Shop:OpenSkinsPage(async)
+    openPage(self, "Skins", async)
 end
 
 function Shop:OpenCollectionsPage(async)
-    if not async and self.openItemList == "Collections" then
-        return
-    end
-    self.openItemList = "Collections"
-
-    self.Location.SkinsButton.BackgroundColor3 = Color3.fromRGB(136, 164, 200)
-    self.Location.CollectionsButton.BackgroundColor3 = Color3.fromRGB(29, 42, 59)
-    self.Location.CasesButton.BackgroundColor3 = Color3.fromRGB(136, 164, 200)
-    self.itemLists.ItemList_Skins:Disable()
-    self.itemLists.ItemList_Cases:Disable()
-    self.itemLists.ItemList_Keys:Disable()
-    self.itemLists.ItemList_Collections:Enable()
+    openPage(self, "Collections", async)
 end
 
 function Shop:OpenCasesPage(async)
-    if not async and self.openItemList == "Cases" then
-        return
-    end
-    self.openItemList = "Cases"
-
-    self.Location.SkinsButton.BackgroundColor3 = Color3.fromRGB(136, 164, 200)
-    self.Location.CollectionsButton.BackgroundColor3 = Color3.fromRGB(136, 164, 200)
-    self.Location.CasesButton.BackgroundColor3 = Color3.fromRGB(29, 42, 59)
-    self.itemLists.ItemList_Cases:Enable()
-    self.itemLists.ItemList_Keys:Enable()
-    self.itemLists.ItemList_Skins:Disable()
-    self.itemLists.ItemList_Collections:Disable()
+    openPage(self, "Cases", async)
 end
 
 -- Toggle All Pages On/Off
@@ -143,18 +145,19 @@ function Shop:TogglePages(toggle)
         else
             self:OpenCasesPage(true)
         end
-        self.Location.SkinsButton.Visible = true
-        self.Location.CollectionsButton.Visible = true
-        self.Location.CasesButton.Visible = true
-    else
-        self.itemLists.ItemList_Skins:Disable()
-        self.itemLists.ItemList_Cases:Disable()
-        self.itemLists.ItemList_Keys:Disable()
-        self.itemLists.ItemList_Collections:Disable()
-        self.Location.SkinsButton.Visible = false
-        self.Location.CollectionsButton.Visible = false
-        self.Location.CasesButton.Visible = false
+        self.Frame.SkinsButton.Visible = true
+        self.Frame.CollectionsButton.Visible = true
+        self.Frame.CasesButton.Visible = true
+        return
     end
+
+    self.itemLists.ItemList_Skins:Disable()
+    self.itemLists.ItemList_Cases:Disable()
+    self.itemLists.ItemList_Keys:Disable()
+    self.itemLists.ItemList_Collections:Disable()
+    self.Frame.SkinsButton.Visible = false
+    self.Frame.CollectionsButton.Visible = false
+    self.Frame.CasesButton.Visible = false
 end
 
 -- [[ ITEM DISPLAY ]]
@@ -198,7 +201,7 @@ function Shop:OpenItemDisplay(item, itemDisplayName)
         self:CloseItemDisplay()
     end)
 
-    self:PlaySound("ItemDisplay")
+    self.Main:PlayButtonSound("ItemDisplay")
     self:TogglePages()
     self.itemDisplayFrame.Visible = true
 end
@@ -247,6 +250,7 @@ function Shop:_MainClickedItemDisplay(item, itemType, shopItem)
         weaponLabel.Text = string.upper(tostring(shopItem.weapon))
         caseLabel.Visible = false
     end
+
     local conns = {}
     local function otherDisconnect(index)
         for i, v in pairs(conns) do
@@ -268,7 +272,7 @@ function Shop:_MainClickedItemDisplay(item, itemType, shopItem)
             return
         end
         self.itemDisplayVar.purchaseProcessing = true
-        self:PlaySound("Open")
+        self.Main:PlayButtonSound("Open")
         otherDisconnect(1)
         itemDisplayPurchaseItem(self, item, "PremiumCredits", shopItem, amountPurchased)
         confirmGui:Destroy()
@@ -284,7 +288,7 @@ function Shop:_MainClickedItemDisplay(item, itemType, shopItem)
             return
         end
         self.itemDisplayVar.purchaseProcessing = true
-        self:PlaySound("Open")
+        self.Main:PlayButtonSound("Open")
         otherDisconnect(2)
         itemDisplayPurchaseItem(self, item, "StrafeCoins", shopItem, amountPurchased)
         confirmGui:Destroy()
@@ -303,8 +307,18 @@ function Shop:_MainClickedItemDisplay(item, itemType, shopItem)
         conns = nil
     end)
 
+    local ctrlHeld = false
+
     conns[4] = plusButton.MouseButton1Click:Connect(function()
-        amountPurchased += 1
+        local amount = 1
+        if ctrlHeld then
+            amount = 10
+            if amountPurchased == 1 then
+                amount -= 1
+            end
+        end
+
+        amountPurchased += amount
         amountLabel.Text = tostring(amountPurchased)
         pcAcceptButton.Text = tostring(shopItem.price_pc*amountPurchased) .. " PC"
         scAcceptButton.Text = tostring(shopItem.price_sc*amountPurchased) .. " SC"
@@ -312,10 +326,31 @@ function Shop:_MainClickedItemDisplay(item, itemType, shopItem)
 
     conns[5] = minusButton.MouseButton1Click:Connect(function()
         if amountPurchased - 1 > 0 then
-            amountPurchased -= 1
+            local amount = 1
+            if ctrlHeld then
+                if amountPurchased == 1 then
+                    amount = math.min(amountPurchased-1, 10-1)
+                else
+                    amount = math.min(amountPurchased-1, 10)
+                end
+            end
+
+            amountPurchased -= amount
             amountLabel.Text = tostring(amountPurchased)
             pcAcceptButton.Text = tostring(shopItem.price_pc*amountPurchased) .. " PC"
             scAcceptButton.Text = tostring(shopItem.price_sc*amountPurchased) .. " SC"
+        end
+    end)
+
+    conns[6] = UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.LeftControl then
+            ctrlHeld = true
+        end
+    end)
+
+    conns[7] = UserInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.LeftControl then
+            ctrlHeld = false
         end
     end)
 
@@ -326,16 +361,16 @@ end
 function itemDisplayPurchaseItem(self, item, purchaseType, parsedItem, amount)
     if ShopInterface:PurchaseItem(item, amount, purchaseType) then
         task.delay(0.5, function()
-            self:FindPage("Inventory"):Update(true)
+            self.Main:GetPage("Inventory"):Update()
         end)
-        self:PlaySound("Purchase1")
-        Popup.burst("Successfully bought item! " .. tostring(parsedItem.name), 3)
+        self.Main:PlayButtonSound("Purchase1")
+        Popup.new(game.Players.LocalPlayer, "Successfully bought item! " .. tostring(parsedItem.name), 3)
         return true
-    else
-        self:PlaySound("Error1")
-        Popup.burst("Could not buy item " .. tostring(parsedItem.name), 3)
-        return false
     end
+
+    self.Main:PlayButtonSound("Error1")
+    Popup.new(game.Players.LocalPlayer, "Could not buy item " .. tostring(parsedItem.name), 3)
+    return false
 end
 
 -- [[ UTIL ]]
@@ -344,12 +379,10 @@ function Shop:GetSkinDisplayImageID(weapon, skin): string
 end
 
 function Shop:UpdateEconomy(sc: number?, pc: number?)
-    if sc then
-        self.scLabel.Text = tostring(sc)
-    end
-    if pc then
-        self.pcLabel.Text = tostring(pc)
-    end
+    sc = sc and tostring(sc) or self.scLabel.Text
+    pc = pc and tostring(pc) or self.pcLabel.Text
+    self.scLabel.Text = tostring(sc)
+    self.pcLabel.Text = tostring(pc)
 end
 
 return Shop

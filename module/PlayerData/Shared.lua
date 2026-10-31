@@ -18,6 +18,25 @@ Shared.defVar = {
     economy = {clientReadOnly = true}
 }
 
+Shared.defLimits = {
+    options = {
+        crosshair = {
+            red = {min = 0, max = 255},
+            blue = {min = 0, max = 255},
+            green = {min = 0, max = 255},
+            gap = {min = -5, max = 15},
+            size = {min = 0, max = 15},
+            thickness = {min = 0, max = 15},
+        },
+        camera = {
+            vmX = {min = -3, max = 3},
+            vmY = {min = -3, max = 3},
+            vmZ = {min = -3, max = 3},
+            FOV = {min = 55, max = 110}
+        }
+    }
+}
+
 -- [[ PLAYER OWNED ITEMS INFORMATION ]]
 
 -- case & keys: "caseName"
@@ -62,12 +81,14 @@ Shared.def.options = {
         vmY = 0,
         vmZ = 0,
         FOV = 75,
+        vmBob = 1,
     },
 
     keybinds = {
         primaryWeapon = "One",
         secondaryWeapon = "Two",
         ternaryWeapon = "Three",
+        bombWeapon = "Five",
         primaryAbility = "F",
         secondaryAbility = "V",
         interact = "E",
@@ -84,7 +105,10 @@ Shared.def.options = {
 
 Shared.def.pstats = {
     kills = 0,
-    deaths = 0
+    deaths = 0,
+    wins = 0,
+    losses = 0,
+    mapWins = {},
 }
 
 Shared.def.economy = {
@@ -92,5 +116,31 @@ Shared.def.economy = {
     premiumCredits = 0,
     xp = 0
 }
+
+--
+
+function Shared:VerifyNewOptionValue(optionKey, valueKey, value)
+    local limit = Shared.defLimits.options[optionKey]
+    limit = limit and limit[valueKey]
+
+    if limit then
+        print(value)
+        print(limit)
+        print(value)
+        print(math.clamp(value, limit.min, limit.max))
+        if math.clamp(value, limit.min, limit.max) ~= value then
+            print("Could not verify Option Limits.")
+            return false
+        end
+    end
+
+    local opType = type(Shared.def.options[optionKey][valueKey])
+    if type(value) ~= opType then
+        print("Could not verify Option Type.")
+        return false
+    end
+    
+    return true
+end
 
 return Shared

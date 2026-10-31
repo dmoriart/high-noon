@@ -3,6 +3,14 @@ if RunService:IsClient() then return {} end
 
 local StoredMapIDs = require(game:GetService("ServerStorage"):WaitForChild("Stored"):WaitForChild("MapIDs"))
 local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
+local GameService = require(Framework.Service.GameService)
+local Permissions = require(game:GetService("ServerStorage"):WaitForChild("Stored"):WaitForChild("AdminIDs"))
+local BotService = require(Framework.Service.BotService)
+
+local AdminCommands = require(script.Parent.Commands.Admin)
+local Events = script.Parent.Events
 
 local listener = {
     connections = false
@@ -18,6 +26,22 @@ end
 function listener:_connectListener()
     self.Bridge.OnServerInvoke = function(...)
         return self:BridgeInvoke(...)
+    end
+    Events.VerifyCommandEvent.OnServerInvoke = function(player, command, ...)
+        -- check if is cheating command, verify is admin or cheats enabled
+        if not AdminCommands[command] then
+            return true
+        end
+
+        local isAdmin = Permissions:IsAdmin(player)
+        if isAdmin then
+            return true
+        end
+        
+        if not AdminCommands[command].Public or not GameService:IsCheatsEnabled() then
+            return false
+        end
+        return true
     end
 end
 
@@ -45,6 +69,15 @@ function listener:BridgeInvoke(player, action, ...)
         end)
 
         return success, err
+    elseif action == "DemoCommand" then
+        print("Demo Command Received!")
+        for i, v in pairs(game.ServerStorage.UpdatedDemo:GetChildren()) do
+            local cf = v.PrimaryPart.CFrame
+            local prop = {
+                Respawn = false, SpawnCFrame = cf, StartingHealth = 100, StartingHelmet = true, StartingShield = 50
+            }
+            BotService:AddBot(prop)
+        end
     end
 
     return false

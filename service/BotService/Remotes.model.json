@@ -10,8 +10,16 @@
         "ClassName": "RemoteEvent"
       },
       {
+        "Name": "BotAddedBindable",
+        "ClassName": "BindableEvent"
+      },
+      {
         "Name": "BotDiedBindable",
         "ClassName": "BindableEvent"
+      },
+      {
+        "Name": "GetBotsBindable",
+        "ClassName": "BindableFunction"
       }
     ]
   }

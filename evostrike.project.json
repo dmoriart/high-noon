@@ -1,0 +1,53 @@
+{
+  "name": "High Noon",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "$path": "src/shared",
+      "$ignoreUnknownInstances": true,
+      "Framework": {
+        "$path": "framework",
+        "$ignoreUnknownInstances": true
+      },
+      "Services": {
+      "$path": "service",
+        "$ignoreUnknownInstances": true
+      },
+      "Modules": {
+        "$path": "module",
+        "$ignoreUnknownInstances": true
+      }
+    },
+
+    "ServerScriptService": {
+      "$path": "src/server",
+      "$ignoreUnknownInstances": true
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$path": "src/client/player",
+        "$ignoreUnknownInstances": true
+      },
+      "StarterCharacterScripts" : {
+        "$path": "src/client/character",
+        "$ignoreUnknownInstances": true
+      }
+    },
+
+    "ServerStorage": {
+      "$path": "src/serverstorage",
+      "$ignoreUnknownInstances": true,
+      "Plugins": {
+        "$path": "plugin",
+        "$ignoreUnknownInstances": true
+      }
+    },
+
+    "ReplicatedFirst": {
+      "$path": "src/replicatedfirst",
+      "$ignoreUnknownInstances": true
+    }
+  }
+}

@@ -6,6 +6,7 @@
 ]]
 
 local MOVEMENT_INIT_ANCHOR_LENGTH = 0
+local DEBUG_ATTRIBUTES_ENABLED = true
 
 -- [[ Services ]]
 local Players = game:GetService("Players")
@@ -14,11 +15,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService('UserInputService')
 local RunService = game:GetService("RunService")
 local Framework = require(ReplicatedStorage:WaitForChild("Framework"))
-local States = require(Framework.Module.m_states)
+local States = require(Framework.Module.States)
 local SoundModule = require(Framework.Module.Sound)
 local Strings = require(Framework.Module.lib.fc_strings)
 local PlayerData2 = require(Framework.Module.PlayerData)
-local MovementState = States.State("Movement")
+local MovementState = States:Get("Movement")
 local Promise = require(Framework.Module.lib.c_promise)
 local instanceLib = require(Framework.Module.lib.fc_instance)
 
@@ -54,6 +55,7 @@ local onGroundMovementState = false
 local playerVelocity = Vector3.zero
 local landed = Events:WaitForChild("Landed")
 local dashModule = require(ReplicatedStorage.Services.AbilityService.Ability.Dash)
+local startLand = 0
 
 local runningAnimation = hum.Animator:LoadAnimation(hum.Animations.Run)
 local jumpingAnimation = hum.Animator:LoadAnimation(hum.Animations.Jump)
@@ -103,10 +105,20 @@ local Movement = {
 	movementVelocityForce = 300000,
 
 	dashing = false,
+	sliding = false,
+	laddering = false,
+
+	ladderClimbDir = Vector3.zero,
+	ladderNormal = Vector3.zero,
+	ladderDirection = Vector3.zero,
+	ladderVelocity = Vector3.zero,
+	ladderCancel = false,
+
 	currentAirFriction = 0,
-	sliding = false
 }
 Movement.__index = Movement
+
+local TEMP_CROUCH_PLAYER_TORSO_TO_GROUND = 4
 
 -- init sounds
 --[[local humSounds = Movement.collider:WaitForChild("Sounds")
@@ -129,15 +141,27 @@ Movement.Sounds = {
 	landWood = Movement.collider.Land_Wood
 }
 
-local localRunVolume = 0.5
+local localRunVolume = 0.2
 local runv = localRunVolume
-local serverRunVolume = 2
+local serverRunVolume = 2.2
 
 Movement.Sounds.runDefault.Volume = runv
 
 Movement.GetIgnoreDescendantInstances = function()
 	return {player.Character, workspace.CurrentCamera, workspace.Temp, workspace.MovementIgnore}
 end
+
+Movement.Params = instanceLib.New("RaycastParams", {
+	FilterType = Enum.RaycastFilterType.Exclude,
+	FilterDescendantsInstances = {player.Character, RunService:IsClient() and workspace.CurrentCamera or {}},
+	CollisionGroup = "PlayerMovement"
+})
+
+Movement.LadderParams = instanceLib.New("RaycastParams", {
+	FilterType = Enum.RaycastFilterType.Exclude,
+	FilterDescendantsInstances = {player.Character, RunService:IsClient() and workspace.CurrentCamera or {}},
+	CollisionGroup = "PlayerMovement"
+})
 
 --[[
 	Init Movement Extrensic Module Functions & Configuration
@@ -163,7 +187,7 @@ for i, v in pairs(config) do
 end
 
 --create YLength after config variables are added
-Movement.rayYLength = Movement.playerTorsoToGround + Movement.movementStickDistance
+
 
 -- Total max speed add modifier (for weapon slowing)
 Movement.maxSpeedAdd = 0
@@ -193,6 +217,12 @@ for i, v in pairs(setmetatable(require(script.Physics), Movement)) do
 	end
 end
 
+local Ladder = require(script:WaitForChild("Ladder"))
+
+local defaultYLength = Movement.playerTorsoToGround + Movement.movementStickDistance
+local crouchYLength = TEMP_CROUCH_PLAYER_TORSO_TO_GROUND + Movement.movementStickDistance
+Movement.rayYLength = defaultYLength
+
 --[[ Process Movement Functions ]]
 
 --[[
@@ -217,12 +247,20 @@ end
 	@summary
 ]]
 
-local PlayerActionsState = States.State("PlayerActions")
+local PlayerActionsState = States:Get("PlayerActions")
 function Movement.Run(hitPosition, hitNormal, hitMaterial)
 	Movement.movementPosition.position = hitPosition + Vector3.new(0, Movement.playerTorsoToGround, 0)
-	Movement.movementPosition.maxForce = Vector3.new(0, Movement.movementPositionForce, 0)
+	
+	if Movement.laddering then
+		Movement.movementPosition.maxForce = Vector3.new()
+		Movement.movementVelocity.maxForce = Movement:GetMovementVelocityAirForce()
+	else
+		Movement.movementPosition.maxForce = Vector3.new(0, Movement.movementPositionForce, 0)
+		Movement.movementVelocity.maxForce = Movement:GetMovementVelocityForce()
+	end
+	
 	Movement:ApplyGroundVelocity(hitNormal)
-	Movement.movementVelocity.maxForce = Movement:GetMovementVelocityForce()
+
 	Movement.movementVelocity.P = Movement.movementVelocityP
 
 	-- get current run sound
@@ -235,7 +273,7 @@ function Movement.Run(hitPosition, hitNormal, hitMaterial)
 	end
 
 	-- Running Sounds
-	if Movement.movementVelocity.Velocity.Magnitude > Movement.walkNoiseSpeed + PlayerActionsState:get(player, "currentEquipPenalty") then
+	if Movement.movementVelocity.Velocity.Magnitude > Movement.walkNoiseSpeed + PlayerActionsState:get("currentEquipPenalty") then
 		if not runsnd.IsPlaying then SoundModule.PlayReplicated(runsnd, serverRunVolume) end
 	else
 		if runsnd.IsPlaying then SoundModule.StopReplicated(runsnd) end
@@ -250,7 +288,7 @@ function Movement.Run(hitPosition, hitNormal, hitMaterial)
 
 	if not onGroundMovementState then
 		onGroundMovementState = true
-		MovementState:set(player, "grounded", true)
+		MovementState:set("grounded", true)
 	end
 
 end
@@ -266,7 +304,20 @@ local vmScript
 
 function Movement.Jump(velocity)
 	Movement.jumpGrace = tick() + Movement.jumpTimeBeforeGroundRegister -- This is how i saved the glitchy mousewheel jump
-	collider.Velocity = Vector3.new(collider.Velocity.X, velocity, collider.Velocity.Z)
+
+	local vel = Vector3.new(collider.Velocity.X, velocity, collider.Velocity.Z)
+
+	if Movement.laddering then
+		local lad = Movement.ladderNormal * vel.Magnitude
+		vel = Vector3.new(
+			vel.X + lad.X,
+			vel.Y + lad.Y,
+			vel.Z + lad.Z
+		)
+	end
+
+	collider.Velocity = vel
+
 	Movement.Air()
 
 	--if hudCharClass.animations.running.isPlaying then hudCharClass.animations.running:Stop(0.2) end
@@ -307,21 +358,22 @@ local cnumval = Instance.new("NumberValue", RepTemp)
 function landFinish()
 	ctween[1]:Destroy()
 	ctween[2]:Destroy()
-	cconn:Disconnect()
+	--cconn:Disconnect()
 	landProcessing = false
 	landing = false
-	MovementState:set(player, "landing", false)
+	MovementState:set("landing", false)
 end
 
 function Movement.Land(fric: number, waitTime: number, hitMaterial)
 
-	MovementState:set(player, "landing", true)
+	MovementState:set("landing", true)
 
 	fric = fric or (Movement.dashing and dashModule.Options.landingMovementDecreaseFriction) or Movement.landingMovementDecreaseFriction
 	waitTime = waitTime or (Movement.dashing and dashModule.Options.landingMovementDecreaseLength) or Movement.landingMovementDecreaseLength
 	hitMaterial = hitMaterial or Enum.Material.Concrete
 	landing = true
 	Movement.sliding = false
+	Movement.ladderCancel = false
 
 	Movement.RegisterGroundMaterialSounds(hitMaterial)
 
@@ -339,16 +391,16 @@ function Movement.Land(fric: number, waitTime: number, hitMaterial)
 	if landProcessing then
 		ctween[1]:Destroy()
 		ctween[2]:Destroy()
-		cconn:Disconnect()
+		--cconn:Disconnect()
 	end
 
 	landProcessing = true
 	cnumval.Value = 0
-	local startLand = tick() + Movement.landingMovementJumpGrace
+	startLand = tick() + Movement.landingMovementJumpGrace
 
 	ctween = {
 		TweenService:Create(cnumval, TweenInfo.new(waitTime/2), {Value = fric}),
-		TweenService:Create(cnumval, TweenInfo.new(waitTime), {Value = 0})
+		TweenService:Create(cnumval, TweenInfo.new(waitTime/2), {Value = 0})
 	}
 
 	ctween[1].Completed:Once(function()
@@ -358,16 +410,9 @@ function Movement.Land(fric: number, waitTime: number, hitMaterial)
 		end)
 	end)
 
-	cconn = RunService.RenderStepped:Connect(function(dt)
-		if tick() < startLand or not landProcessing then
-			return
-		end
-		if jumping or inAir then
-			landFinish()
-			return
-		end
-		Movement:ApplyFriction(cnumval.Value)
-	end)
+	--[[cconn = RunService.RenderStepped:Connect(function(dt)
+		
+	end)]]
 
 	-- play friction tween
 	ctween[1]:Play()
@@ -402,7 +447,7 @@ function Movement.Crouch(crouch: boolean)
 		hum.CameraOffset = Vector3.new(0, -Movement.crouchDownAmount, 0)
 
 		-- movement state
-		MovementState:set(player, "crouching", true)
+		MovementState:set("crouching", true)
 		Movement.crouching = true
 
 	else
@@ -418,7 +463,7 @@ function Movement.Crouch(crouch: boolean)
 		hum.CameraOffset = Vector3.new(0, Movement.defaultCameraHeight, 0)
 
 		-- movement state
-		MovementState:set(player, "crouching", false)
+		MovementState:set("crouching", false)
 		Movement.crouching = false
 
 	end
@@ -462,17 +507,20 @@ function Movement.SetFrictionVars(frictionVarKey: string)
 		Movement.maxSpeedAdd -= (Movement.groundMaxSpeed - Movement.crouchMoveSpeed)
 		Movement.groundAccelerate = Movement.crouchAccelerate
 		Movement.friction = Movement.crouchFriction
+		Movement.rayYLength = crouchYLength
 	elseif frictionVarKey == "walk" then
 		Movement.LastFrictionVar = "walk"
 		Movement.maxSpeedAdd -= (Movement.groundMaxSpeed - Movement.walkMoveSpeed)
 		Movement.groundAccelerate = Movement.walkAccelerate
 		Movement.friction = Movement.crouchFriction
+		Movement.rayYLength = defaultYLength
 	elseif frictionVarKey == "run" then
 		local sub = (Movement.LastFrictionVar == "crouch" and Movement.crouchMoveSpeed) or (Movement.LastFrictionVar == "walk" and Movement.walkMoveSpeed) or 0
 		Movement.LastFrictionVar = "run"
 		Movement.maxSpeedAdd += (Movement.groundMaxSpeed - sub)
 		Movement.groundAccelerate = Movement.defGroundAccelerate
 		Movement.friction = Movement.defFriction
+		Movement.rayYLength = defaultYLength
 	end
 end
 
@@ -581,6 +629,17 @@ function getMoveSum()
 end
 
 function Movement.ProcessMovement()
+
+	if hum.Health <= 0 then
+		if Movement.Sounds.runDefault.isPlaying then
+			Movement.Sounds.runDefault:Stop()
+		end
+		if Movement.Sounds.landDefault.isPlaying then
+			Movement.Sounds.landDefault:Stop()
+		end
+		--if runsnd.IsPlaying then SoundModule.StopReplicated(runsnd) end
+	end
+
 	cameraYaw = Movement:GetYaw()
 	cameraLook = cameraYaw.lookVector
 	Movement.cameraYaw = cameraYaw
@@ -595,17 +654,12 @@ function Movement.ProcessMovement()
 	local hitPart, hitPosition, hitNormal, yRatio, zRatio, ladderTable = Movement:FindCollisionRay()
 	playerGrounded = hitPart and true or false
 	if not playerGrounded or not hitPosition or not hitPart then
-		local params = instanceLib.New("RaycastParams", {
-			FilterType = Enum.RaycastFilterType.Exclude,
-			FilterDescendantsInstances = {player.Character, RunService:IsClient() and workspace.CurrentCamera or {}},
-			CollisionGroup = "PlayerMovement"
-		})
-	
+
 		local result = workspace:Blockcast(
 			CFrame.new(player.Character.HumanoidRootPart.CFrame.Position + Vector3.new(0, -3.25 + (Movement.crouching and Movement.crouchDownAmount or 0), 0)),
 			Vector3.new(1.5,1.5,1),
 			Vector3.new(0, -1, 0),
-			params
+			Movement.Params
 		)
 	
 		if result then
@@ -645,8 +699,20 @@ function Movement.ProcessMovement()
 	else
 		lastSavedHitPos = hitPosition
 	end
+
+	Movement.inAir = inAir
+	Movement.playerGrounded = playerGrounded
+	Movement.groundNormal = hitNormal
+	Movement.jumping = jumping
+
+	Ladder.Check(Movement)
+	if Movement.laddering then
+		print('laddering')
+		Ladder.Physics(Movement)
+	end
 	
 	-- [[ LANDING REGISTRATION ]]
+
 	if playerGrounded and inAir and (not Movement.jumpGrace or tick() >= Movement.jumpGrace) then
 		local a = inAir
 		inAir = false
@@ -656,14 +722,22 @@ function Movement.ProcessMovement()
 		if tick() >= a + Movement.minInAirTimeRegisterLand and not landing then
 			Movement.Land(false, false, hitPart.Material)
 			landed:Fire()
-		else
+		elseif not Movement.laddering then
 			Movement.Run(hitPosition, hitNormal, hitPart.Material)
 			return
 		end
+	end
 
+	if landing then
+		if jumping or inAir then
+			landFinish()
+		else
+			Movement:ApplyFriction(cnumval.Value)
+		end
 	end
 	
 	-- [[ JUMP & CROUCH INPUT REGISTRATION ]]
+	-- LADDERS WILL GO HERE
 
 	if Inputs.FormattedKeys[Inputs.Keys.Jump[1]] > 0 then
 		jumping = true
@@ -731,7 +805,10 @@ function Movement.ProcessMovement()
 		Movement.Dash()
 		return
 	end
-	
+
+	-- LADDER CHECK
+	Movement.jumping = jumping
+
 	-- [[ GROUND MOVEMENT ]]
 	if playerGrounded then
 		if jumping then
@@ -763,13 +840,14 @@ function Movement.ProcessMovement()
 				-- this is so the function wont overload the server with remotes
 				inAirMovementState = true
 				onGroundMovementState = false
-				MovementState:set(player, "grounded", false)
+				MovementState:set("grounded", false)
 			end
 		end
 
 		-- get velocity
 		Movement.Air()
 
+		Movement.jumping = jumping
 	end
 end
 
@@ -887,13 +965,15 @@ local function listenForPropertyChanged()
 	return
 end
 
+local function listenForAttributeChanges()
+	script.AttributeChanged:Connect(function(attribute)
+		Movement[attribute] = script:GetAttribute(attribute)
+	end)
+end
 
 --[[
 	Main Scope
 ]]
-
-local prevUpdateTime = nil
-local updateDT = 1/60
 
 function Update(dt)
 	if not hum or (hum and hum.Health <= 0) then return end
@@ -903,21 +983,6 @@ function Update(dt)
 	Inputs.UpdateMovementSum()
 	Movement.ProcessMovement()
 	listenForPropertyChanged()
-end
-
-function SetDeltaTime() --seconds
-	local UpdateTime = tick() 
-	if prevUpdateTime ~= nil then
-		updateDT = (UpdateTime - prevUpdateTime)
-	else
-		updateDT = 1/60
-	end
-	prevUpdateTime = UpdateTime
-end
-
-function UpdateLoop()
-	SetDeltaTime()
-	Update(updateDT)
 end
 
 function Main()
@@ -934,7 +999,7 @@ function Main()
 	UserInputService.InputBegan:Connect(Inputs.OnInput)
 	UserInputService.InputEnded:Connect(Inputs.OnInput)
 	UserInputService.InputChanged:Connect(Inputs.OnInputChange)
-	RunService:BindToRenderStep("updateLoop", 100, UpdateLoop)
+	RunService:BindToRenderStep("updateLoop", 100, Update)
 
 	-- connect movement abilities
 	script.Events.Dash.Event:Connect(Movement.RegisterDashVariables)
@@ -961,6 +1026,10 @@ function Main()
 		end)
 	else
 		_init()
+	end
+
+	if DEBUG_ATTRIBUTES_ENABLED then
+		listenForAttributeChanges()
 	end
 end
 

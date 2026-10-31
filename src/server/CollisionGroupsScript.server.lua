@@ -23,7 +23,9 @@ local collisionGroups = { -- Name, CollideAll
     bots = {"Bots", true},
     none = {"None", false},
     Weapons = {"Weapons", false},
-    grenades = {"Grenades", true}
+    grenades = {"Grenades", true},
+    ladders = {"Ladders", false},
+    playerLadderCollider = {"PlayerLadderCollider", false}
 }
 
 -- this is so shit but convert collisionGroups tables back to table<string>
@@ -31,7 +33,6 @@ local cg = {}
 for i, v in pairs(collisionGroups) do
     cg[i] = v[1]
 end
-
 --
 
 function RegisterCollisionGroup(groupName: string, collideAll: boolean?) -- default: setToCollideAll = true
@@ -44,7 +45,6 @@ end
 
 
 --
-
 function util_setToCollideAll(group: string, bool: boolean)
     for _, rGroup in pairs(PhysicsService:GetRegisteredCollisionGroups()) do
         if collisionGroups[rGroup.name] and collisionGroups[rGroup.name][2] ~= bool then continue end -- Ignore if collision group is preset ignore/dont ignore all
@@ -118,6 +118,10 @@ local function initMain()
     PhysicsService:CollisionGroupSetCollidable("PlayerFeet", "Bots", false)
     PhysicsService:CollisionGroupSetCollidable("Players", "Bots", false)
     PhysicsService:CollisionGroupSetCollidable("Players", "Bullets", true)
+    PhysicsService:CollisionGroupSetCollidable("Players", "Ladders", true)
+    PhysicsService:CollisionGroupSetCollidable("PlayerMovement", "Ladders", true)
+    PhysicsService:CollisionGroupSetCollidable("PlayerLadderCollider", "Ladders", true)
+    PhysicsService:CollisionGroupSetCollidable("PlayerLadderCollider", "PlayerLadderCollider", false)
 
     -- flash cast
     PhysicsService:CollisionGroupSetCollidable(cg.flashCast, "Players", true)

@@ -32,6 +32,14 @@
       {
         "Name": "BuyMenuSelected",
         "ClassName": "RemoteEvent"
+      },
+      {
+        "Name": "ConnectOpenInput",
+        "ClassName": "RemoteEvent"
+      },
+      {
+        "Name": "Extras",
+        "ClassName": "RemoteFunction"
       }
     ]
   }

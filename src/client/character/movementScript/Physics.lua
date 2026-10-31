@@ -16,7 +16,7 @@ local module = {}
 function module:ApplyFriction(modifier, decel)
 
 	local vel = self.movementVelocity.Velocity
-	local speed = vel.Magnitude
+	local speed =  vel.Magnitude --Vector3.new(vel.X, 0, vel.Y).Magnitude --vel.Magnitude
 	
 	-- if we're not moving, don't apply friction
 	if speed <= 0 then
@@ -46,6 +46,11 @@ function module:ApplyFriction(modifier, decel)
 
 	-- apply
 	self.movementVelocity.Velocity = vel * newSpeed
+	--[[self.movementVelocity.Velocity = Vector3.new(
+		self.movementVelocity.Velocity.X * newSpeed,
+		self.movementVelocity.Velocity.Y,
+		self.movementVelocity.Velocity.Z * newSpeed
+	)]]
 end
 
 --[[
@@ -86,7 +91,14 @@ function module:ApplyGroundVelocity(groundNormal: Vector3)
 
 	-- calculate slope movement
 	local forwardVelocity: Vector3 = groundNormal:Cross(CFrame.Angles(0,math.rad(90),0).LookVector * Vector3.new(self.movementVelocity.Velocity.X, 0, self.movementVelocity.Velocity.Z))
-	local yVel = forwardVelocity.Unit.Y * Vector3.new(self.movementVelocity.Velocity.X, 0, self.movementVelocity.Velocity.Z).Magnitude
+	
+	local yVel
+	if self.laddering then
+		yVel = self.ladderLerpVelocity.Y
+		self.collider.Velocity = Vector3.new(self.collider.Velocity.X, yVel, self.collider.Velocity.Z)
+	else
+		yVel = forwardVelocity.Unit.Y * Vector3.new(self.movementVelocity.Velocity.X, 0, self.movementVelocity.Velocity.Z).Magnitude
+	end
 
 	-- apply slope movement
 	self.movementVelocity.Velocity = Vector3.new(self.movementVelocity.Velocity.X, yVel * (accelDir.Y < 0 and 1.2 or 1), self.movementVelocity.Velocity.Z)

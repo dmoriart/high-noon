@@ -1,53 +1,18 @@
 {
-  "name": "Evostrike Redone New",
+  "name": "High Noon",
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
-      "$path": "src/shared",
-      "$ignoreUnknownInstances": true,
-      "Framework": {
-        "$path": "framework",
-        "$ignoreUnknownInstances": true
-      },
-      "Services": {
-      "$path": "service",
-        "$ignoreUnknownInstances": true
-      },
-      "Modules": {
-        "$path": "module",
-        "$ignoreUnknownInstances": true
-      }
+      "HighNoon": {"$path": "western/shared"},
+      "Config": {"$path": "src/shared/Config"},
+      "Art": {"$path": "src/shared/Art", "$ignoreUnknownInstances": true},
+      "UpstreamMovementConfig": {"$path": "src/server/MovementScript/config.lua"}
     },
-
-    "ServerScriptService": {
-      "$path": "src/server",
-      "$ignoreUnknownInstances": true
-    },
-
+    "ServerScriptService": {"HighNoon": {"$path": "western/server"}},
     "StarterPlayer": {
-      "StarterPlayerScripts": {
-        "$path": "src/client/player",
-        "$ignoreUnknownInstances": true
-      },
-      "StarterCharacterScripts" : {
-        "$path": "src/client/character",
-        "$ignoreUnknownInstances": true
-      }
+      "$properties": {"CameraMode": "LockFirstPerson"},
+      "StarterPlayerScripts": {"HighNoon": {"$path": "western/client"}}
     },
-
-    "ServerStorage": {
-      "$path": "src/serverstorage",
-      "$ignoreUnknownInstances": true,
-      "Plugins": {
-        "$path": "plugin",
-        "$ignoreUnknownInstances": true
-      }
-    },
-
-    "ReplicatedFirst": {
-      "$path": "src/replicatedfirst",
-      "$ignoreUnknownInstances": true
-    }
+    "Workspace": {"$properties": {"FallenPartsDestroyHeight": -60}}
   }
 }

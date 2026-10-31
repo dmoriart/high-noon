@@ -171,8 +171,6 @@ function start()
 	camera.CFrame = gui:GetAttribute("StartCF")
     gui.Parent = Players.LocalPlayer.PlayerGui
     uistate:addOpenUI("SpawnMenu", gui, true)
-	camera.CameraType = Enum.CameraType.Fixed
-	camera.Focus = CFrame.new(544.745, 299.886, -32.138)
 end
 
 init()

@@ -11,6 +11,7 @@ local Types = require(script.Types)
 local Class = require(script.Class)
 local Config = require(script.Configuration)
 local CommandsFolder = script.Commands
+local Events = script.Events
 
 local RunService = game:GetService("RunService")
 
@@ -49,8 +50,6 @@ function EvoConsole:_instantiateConsole(player)
     if higherPerm then
         if group == "admin" then
             table.insert(commandModules, CommandsFolder.Admin)
-        elseif group == "playtester" then
-            table.insert(commandModules, CommandsFolder.Playtester)
         end
     end
 
@@ -64,6 +63,11 @@ end
 function EvoConsole:ClientToServer(player: Player, key: string)
     if not EvoConsole.ClientOnly() then return end
     return self.Bridge:InvokeServer(key)
+end
+
+function EvoConsole:ClientVerifyCommand(player: Player, key: string)
+    if not EvoConsole.ClientOnly() then return end
+    return Events.VerifyCommandEvent:InvokeServer(key)
 end
 
 -- Create a console object and assign it to a player

@@ -7,16 +7,18 @@ AK103.Configuration = {
 	equipLength = 0.9,
 	fireRate = 0.1, -- 600 rpm
 	reloadLength = 0.9,
+
 	recoilReset = 0.24, -- DEPRECATEd
 	camRecoilReset = 0.5, -- DEPRECATED
-
 	recoilResetMin = 0.25, -- 1st bullet reset
 	recoilResetMax = 0.45, -- Based on cameraRecoilReset in sprayPattern
+	cameraShakeAmount = 0.3,
 	
-	fireVectorCameraOffset = Vector2.new(3.5, 29), -- Side, Up
-	fireAccuracyCameraOffset = Vector2.new(3, 3), -- Side, Up
-	fireVectorCameraMax = Vector3.new(0.03, 0.05, 0.3), -- Up, Side (0.38 is the 5th bullet's camera vector amount.)
-	--fireVectorCameraMax = Vector3.new(1, 1, 3), -- Up, Side
+	vectorLeavesCrosshairBullet = 9, -- The bullet at which the Spray Pattern is completely gone from the crosshair.
+	
+	fireVectorCameraOffset = Vector2.new(1, 23), -- Side, Up
+	fireAccuracyCameraOffset = Vector2.new(1.2, 1.5), -- Side, Up
+	fireVectorCameraMax = Vector3.new(0.03, 0.03, 0.3), -- Up, Side (0.38 is the 5th bullet's camera vector amount.)
 	
 	ammo = {
 		magazine = 30,
@@ -25,10 +27,10 @@ AK103.Configuration = {
 	
 	accuracy = {
 		firstBullet = 2,
-		base = 3.7,
-		crouch = 3.4,
-		walk = 200,
-		run = 200,
+		base = 2.1,
+		crouch = 2,
+		walk = 130,
+		run = 130,
 		jump = 150
 	},
 	
@@ -38,9 +40,9 @@ AK103.Configuration = {
 		
 		headMultiplier = 5,
 		legMultiplier = 0.9,
-		damageFalloffPerMeter = 0.7,
-		damageFalloffDistance = 40,
-		damageFalloffMinimumDamage = 20,
+		damageFalloffPerMeter = 0.2,
+		damageFalloffDistance = 57,
+		damageFalloffMinimumDamage = 33,
 		enableHeadFalloff = false,
 		helmetMultiplier = 1,
 		destroysHelmet = true,

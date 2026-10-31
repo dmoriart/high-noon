@@ -5,17 +5,18 @@ local ACR = {
 		automatic = true,
 		
 		equipLength = 0.85,
-		fireRate = 0.093, -- 645 RPM
+		fireRate = 0.0952, -- 630 RPM
 		reloadLength = 0.85,
 		recoilReset = 0.22,
 		camRecoilReset = 0.5,
 		
 		recoilResetMin = 0.25, -- 1st bullet reset
-		recoilResetMax = 0.41, -- Based on cameraRecoilReset in sprayPattern
+		recoilResetMax = 0.4, -- Based on cameraRecoilReset in sprayPattern
+		cameraShakeAmount = 0.22,
 		
-		fireVectorCameraOffset = Vector2.new(3, 20), -- Side, Up
-		fireAccuracyCameraOffset = Vector2.new(3, 3), -- Side, Up
-		fireVectorCameraMax = Vector3.new(0.03, 0.07, 0.3), -- Up, Side (0.38 is the 5th bullet's camera vector amount.)
+		fireVectorCameraOffset = Vector2.new(1, 20), -- Side, Up
+		fireAccuracyCameraOffset = Vector2.new(1.1, 1.4), -- Side, Up
+		fireVectorCameraMax = Vector3.new(0.03, 0.05, 0.3), -- Up, Side (0.38 is the 5th bullet's camera vector amount.)
 		
 		ammo = {
 			magazine = 25,
@@ -24,10 +25,10 @@ local ACR = {
 		
 		accuracy = {
 			firstBullet = 2,
-			base = 4.5,
-			crouch = 3.8,
-			walk = 190,
-			run = 190,
+			base = 2,
+			crouch = 1.9,
+			walk = 130,
+			run = 130,
 			jump = 150
 		},
 		
@@ -37,9 +38,9 @@ local ACR = {
 
 			headMultiplier = 4.6,
 			legMultiplier = 0.9,
-			damageFalloffPerMeter = 0.7,
-			damageFalloffDistance = 35,
-			damageFalloffMinimumDamage = 19,
+			damageFalloffPerMeter = 0.2,
+			damageFalloffDistance = 54,
+			damageFalloffMinimumDamage = 28,
 			enableHeadFalloff = false,
 			helmetMultiplier = 0.88,
 			destroysHelmet = true,

@@ -4,6 +4,9 @@ local UserInputService = game:GetService("UserInputService")
 local Types = require(EvoConsole.Types)
 local Tables = require(EvoConsole.Tables)
 local Configuration = require(EvoConsole.Configuration)
+local Events = script.Parent.Events
+local Strings = require(Framework.Module.lib.fc_strings)
+local ServerVar = require(script.Parent:WaitForChild("Commands").ServerVar)
 
 local States = require(Framework.Module.States)
 local UIState = States:Get("UI")
@@ -18,20 +21,11 @@ function class.new(Console, player)
     -- get all command modules w/ access & create GUI via server
     local gui, commandModules = Console:ClientToServer(player, "instantiateConsole")
 
-    -- compile command modules
-    -- todo: compile in order of lowest permission to highest
-    -- for now we just do admin perms last
+    -- compile commands
     self.Commands = {}
-    for i, v in pairs(commandModules) do
-        if v.Name == "Admin" then
-            self.Commands._ADMINLAST = v
-        else
-            self.Commands = Tables.merge(self.Commands, require(v))
-        end
-    end
-    if self.Commands._ADMINLAST then
-        self.Commands = Tables.merge(self.Commands, require(self.Commands._ADMINLAST))
-        self.Commands._ADMINLAST = nil
+    self.ParsedCommands = {}
+    for _, v in pairs(commandModules) do
+        self.Commands = Tables.merge(self.Commands, require(v))
     end
 
     -- convert objects into object of Console type
@@ -65,29 +59,20 @@ end
 -- Open the console
 function class:Open()
     self:ConnectCommandRegister()
-
     UIState:addOpenUI("Console", self.console.UI, true)
-
-    -- start at bottom
-    self.console.UI.MainFrame.TextReturnFrame.CanvasPosition = Vector2.new(0, self.console.UI.MainFrame.TextReturnFrame.AbsoluteCanvasSize.Y)
-
-    -- vissi
-    self.console.UI.Enabled = true
-
-    self.player:SetAttribute("Typing", true)
     UIState:setIsTyping(true)
+    self.player:SetAttribute("Typing", true)
+    self.console.UI.MainFrame.TextReturnFrame.CanvasPosition = Vector2.new(0, self.console.UI.MainFrame.TextReturnFrame.AbsoluteCanvasSize.Y)
+    self.console.UI.Enabled = true
     self.enterBox:CaptureFocus()
 end
 
 -- Close the console
 function class:Close()
     self:DisconnectCommandRegister()
-
-    UIState:removeOpenUI("Console")
-    print('removed')
-
     self.console.UI.Enabled = false
     self.player:SetAttribute("Typing", false)
+    UIState:removeOpenUI("Console")
     UIState:setIsTyping(false)
 end
 
@@ -153,19 +138,24 @@ local colors = {
 function _printMsg(self, msg: string, msgType: Types.ReturnMessageType|nil)
     if not msgType then msgType = "message" :: Types.ReturnMessageType end
 
-    local lineTemplate = self.console.UI.MainFrame.TextReturnFrame.Line
+    local txtReturnFrame = self.console.UI.MainFrame.TextReturnFrame
+    local lineTemplate = txtReturnFrame.Line
 
     -- check if max lines have been reached
-    if lineTemplate.Position.Y.Scale - lineTemplate.Size.Y.Scale < 0 then
-        self.returnLines[#self.returnLines]:Destroy() -- destroy last line
-        table.remove(self.returnLines, #self.returnLines)
+    local maxLines = txtReturnFrame.CanvasSize.Y.Scale / lineTemplate.Size.Y.Scale
+    if #self.returnLines >= maxLines then
+        txtReturnFrame.CanvasSize.Y.Scale = UDim2.new(txtReturnFrame.CanvasSize.X.Scale, txtReturnFrame.CanvasSize.Y.Scale + lineTemplate.Size.Y.Scale)
+    end
+
+    if lineTemplate.Position.Y.Scale > txtReturnFrame.CanvasSize.Y.Scale then
+        local diff = lineTemplate.Position.Y.Scale - txtReturnFrame.CanvasSize.Y.Scale
+        txtReturnFrame.CanvasSize = UDim2.fromScale(txtReturnFrame.CanvasSize.X.Scale, txtReturnFrame.CanvasSize.Y.Scale + diff)
     end
 
     -- remove default text if necessary
     if #self.returnLines == 0 then
         lineTemplate.Visible = false
     else
-    
         -- shift the text index number up
         for i, v in pairs(self.returnLines) do
 
@@ -196,28 +186,35 @@ function _printMsg(self, msg: string, msgType: Types.ReturnMessageType|nil)
     return true
 end
 
+
+
 function _doCommand(self, commandSplit: table)
+
     -- verify command string was found
     if not commandSplit or not commandSplit[1] then -- split[1] == command
         return self:Error("Could not get command from string")
 	end
+
+    if string.find(commandSplit[1], "sv_") then
+        return ServerVar.Command(self, commandSplit)
+    end
 	
 	-- locate command from Commands
-	local commandTable = false
-	for i, v in pairs(self.Commands) do
-		if string.lower(i) == string.lower(commandSplit[1]) and v.Function then
-			commandTable = v
-			break
-		end
-	end
+	local commandTable = self.Commands[commandSplit[1]] or self.Commands[Strings.firstToUpper(commandSplit[1])]
 
-	-- cant find command
+    -- cant find command
 	if not commandTable then
         return self:Error("Could not find command " .. commandSplit[1])
 	end
 
 	-- remove action string to single out and send arguments
     table.remove(commandSplit, 1)
+
+    -- verify via server remote
+    local canPerformCommand = Events.VerifyCommandEvent:InvokeServer(table.unpack(commandSplit))
+    if not canPerformCommand then
+        return self:Error("Must have cheats enabled on the server to use this command.")
+    end
 	
     -- function
 	return commandTable.Function(self, self.player, table.unpack(commandSplit))
