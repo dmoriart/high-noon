@@ -9,3 +9,5 @@
 - 2026-10-30: A temporary town preview survived a Studio reopen/publish, which would trip the runtime's duplicate-arena check. Mark generated previews explicitly, replace only tagged greybox parts at startup, and refuse replacement if protected or unrecognised art was added.
 
 - 2026-10-30: Playtesting found mouse-tool activation unreliable and touch Fire overlapping Jump. Bind mouse firing explicitly with GUI/chat guards and a shared debounce; check accepted server ammo changes, and position touch buttons after Roblox creates them. A tool reporting input success is not proof that the game received it.
+
+- 2026-10-31: The first practice playtest spawned the player back at an old location after PivotTo; Roblox’s later spawn placement overrode it. Move the existing SpawnLocations for Waiting and restore them before loading match characters; verify the final position in a real client.

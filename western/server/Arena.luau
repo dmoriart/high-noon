@@ -3,6 +3,7 @@ local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
 local Assets = require(game:GetService("ReplicatedStorage").Config.AssetConfig)
 local Art = require(game:GetService("ReplicatedStorage").HighNoon.Art)
+local Practice = require(script.Parent.Practice)
 local Arena = {}
 
 local function part(parent: Instance, name: string, size: Vector3, position: Vector3, material: Enum.Material?): Part
@@ -141,6 +142,7 @@ function Arena.build(): {SpawnLocation}
         spawn.Parent = arena
         table.insert(spawns, spawn)
     end
+    Practice.build(arena)
     Lighting.ClockTime, Lighting.Brightness, Lighting.Ambient = Assets.ClockTime, Assets.Brightness, Assets.Ambient
     Lighting.OutdoorAmbient, Lighting.GlobalShadows = Assets.OutdoorAmbient, true
     local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")

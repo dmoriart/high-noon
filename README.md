@@ -6,6 +6,7 @@ The prototype is a frontier street shootout with one revolver, respawns, a score
 
 ## Prototype
 
+- Waiting players can practise on three targets and reload; personal practice hits never award match points or damage players.
 - Two or more players start a free-for-all shootout: first to 10 eliminations, or highest score after three minutes.
 - Six-shot revolver, server-checked shots and damage, headshots, distance falloff and timed reloads with an unlimited reserve for this prototype.
 - Unequipping interrupts a reload; cancelled timers cannot complete a newer reload.
@@ -35,3 +36,5 @@ See [the milestone spec](docs/specs/SPEC-western-shooter.md), [validation notes]
 Based on Evostrike by [beters02](https://github.com/beters02), who credits himself for programming, engine work, animations and some maps, and his brother [Donut](https://github.com/metr0nme) for assets. Evostrike cites [Fragsurf](https://github.com/Olezen/UnitySourceMovement) as a movement reference.
 
 The [original README](docs/UPSTREAM-README.md) is preserved for full upstream context and links. The [GPL-2.0 licence](LICENSE.txt) remains included. Existing Evostrike assets are upstream work; Josh's future art will be credited separately.
+
+The next growth milestones and real-player/device checks are tracked in [GROWTH-PLAN.md](docs/GROWTH-PLAN.md).
